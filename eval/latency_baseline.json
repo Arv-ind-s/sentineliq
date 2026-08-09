@@ -1,0 +1,11 @@
+{
+  "branch_taken": "offline_template",
+  "first_token_latency_ms": null,
+  "measured_at": "2026-08-07T07:25:49.879532+00:00",
+  "model": "openai-compatible-chat",
+  "observed_output_tokens": null,
+  "observed_output_tokens_per_second": null,
+  "provider": "langchain",
+  "reachable": false,
+  "reason": "auth"
+}

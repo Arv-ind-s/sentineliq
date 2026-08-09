@@ -1,0 +1,38 @@
+{
+  "base_ts_ms": 1735689600000,
+  "channels": [
+    "vibration_rms_mm_s",
+    "vibration_kurtosis",
+    "temp_bearing_c",
+    "temp_motor_c",
+    "pressure_bar",
+    "current_a",
+    "rpm",
+    "ambient_temp_c"
+  ],
+  "clock_offsets_s": [
+    -90,
+    0,
+    90
+  ],
+  "cycle_count": 7200,
+  "days": 60,
+  "defects": {
+    "dropout_rate": 0.011003086419753087,
+    "fahrenheit_machines": [
+      "CONV-14",
+      "PRESS-03"
+    ],
+    "frozen_machine": "CNC-09",
+    "gateway_gap_rows": 960,
+    "near_duplicate_rate": 0.006,
+    "spike_rate": 0.004
+  },
+  "generator": "A-03",
+  "line_count": 3,
+  "machine_count": 15,
+  "sample_partition": "/Users/aravinds/Downloads/Sentinel/data/sensors/machine_id=PUMP-01/date=2025-01-01.parquet",
+  "sample_seconds": 30,
+  "seed": 42,
+  "t0_ts_ms": 1740528000000
+}

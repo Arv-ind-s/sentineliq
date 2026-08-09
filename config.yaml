@@ -1,0 +1,106 @@
+plant:
+  timezone: "Europe/London"
+  machines: 15
+  hourly_downtime_cost_default_gbp: 1800
+
+data:
+  seed: 42
+  days: 60
+  sample_seconds: 30
+  fault_events: 60
+  drift_intervals: 12
+  out_dir: "data/sensors"
+
+preprocess:
+  grid_seconds: 60
+  hampel_window: 11
+  hampel_sigma: 3.0
+  max_interpolate_minutes: 5
+  min_completeness: 0.80
+  frozen_sensor_minutes: 30
+  source_offsets_s: { sensor: 0, erp: -90, ops: 45 }
+
+features:
+  version: "fv1"
+  window_hours: 6
+  stride_hours: 1
+
+predict:
+  horizon_hours: 24
+  min_precision: 0.80
+  threshold_tau_default: 0.42
+  artifacts_dir: "models"
+  # Rule fallback thresholds are [warning, critical] in each channel's native unit.
+  # They are used only when verified model artifacts cannot be loaded.
+  fallback_thresholds:
+    vibration_rms_mm_s: [4.5, 8.0]
+    vibration_kurtosis: [6.0, 12.0]
+    temp_bearing_c: [70.0, 85.0]
+    temp_motor_c: [80.0, 100.0]
+    pressure_bar: [8.0, 12.0]
+    current_a: [30.0, 50.0]
+    rpm: [1450.0, 1750.0]
+    ambient_temp_c: [35.0, 45.0]
+
+fusion:
+  weights: { p_failure: 55, rul_pressure: 20, history: 10, criticality: 8, data_quality: 7 }
+  bands: { critical: 75, high: 55, medium: 35 }
+  autonomy:
+    a0_confidence_below: 0.70
+    a0_cost_above_gbp: 5000
+    safety_critical_modes: ["motor_overheat", "seal_leak"]
+  rules:
+    min_completeness: 0.80
+    rul_pressure_days: 14
+    repeat_failure_window_days: 90
+    repeat_failure_risk_add: 12
+    evidence_conflict_factor: 0.60
+    agreement_factors: { agree: 1.0, partial: 0.8, conflict: 1.0 }
+    evidence_count_saturation: 3
+    criticality_weights: { critical: 1.0, major: 0.6, minor: 0.3 }
+    criticality_score_thresholds: { critical: 5, major: 3 }
+    repeat_failure_min_count: 2
+    sensor_drift_min_replacements: 2
+    confidence_probability_midpoint: 0.5
+    confidence_probability_scale: 2.0
+
+llm:
+  provider: "langchain"
+  base_url: ${LLM_BASE_URL}
+  api_key: ${LLM_API_KEY}
+  chat_path: "/chat/completions"
+  tls_verify: true
+  models:
+    coordinator: { name: "openai-compatible-chat", temperature: 0.2, max_tokens: 450 }
+    log_summary: { name: "openai-compatible-chat", temperature: 0.1, max_tokens: 350 }
+    embeddings:  { enabled: false, name: "", dim: 4000 }
+  json_mode: "auto"
+  prompt_version: "v1"
+  timeout_s: 20
+  max_retries: 1
+  log_summary_call_enabled: true
+  max_context_tokens: 6000
+  circuit_breaker: { failures: 4, cooldown_s: 60 }
+  cache: { enabled: true, ttl_s: 900 }
+  price_per_1k: { prompt: 0.0, completion: 0.0 }
+
+erp:
+  base_url: ${ERP_BASE_URL}
+  api_key: ${ERP_API_KEY}
+  timeout_s: 5
+  max_retries: 3
+  field_map: { asset_id: "asset_id", wo_id: "workorder_id", fault_code: "fault_code" }
+
+security:
+  jwt_ttl_hours: 8
+  rate_limits: { default_per_min: 120, diagnose_per_min: 10, ingest_per_min: 60 }
+  cors_origins: ["http://localhost:5173"]
+
+stream:
+  speedup: 600
+  replay_start_day: 56.0
+  queue_maxsize: 2000
+  demo_alert_window_s: [40, 75]
+
+ui:
+  features: { digital_twin: true, rehearsal: false, ledger: true }

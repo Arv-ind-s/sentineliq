@@ -1,0 +1,286 @@
+/* SentinelPdM design tokens.
+ *
+ * Every colour in the product resolves through this file. Component rules must
+ * reference tokens, never raw hex, so that the light and dark themes stay in
+ * step and a palette change is a one-file change.
+ *
+ * Roles, in the order they are defined below:
+ *   bg-*      surfaces, from the page plane up to overlays
+ *   fg-0..5   text ink, 0 = strongest heading, 5 = decorative placeholder
+ *   accent-*  interaction only (focus, links, primary action, active nav)
+ *   status    ok / warn / high / crit — reserved for state, never decoration
+ *   cat-*     categorical series colour; only three slots exist, by design
+ *   chart-*   plot chrome
+ *
+ * Marks vs ink. Status hues are mode-invariant so a colour always means the
+ * same state (`--ok`, `--warn`, `--high`, `--crit`); each carries a themed
+ * `-ink` companion used when the state has to be rendered as *text*, because
+ * the mark hue alone cannot clear text contrast on both surfaces.
+ *
+ * Palette provenance: categorical slots and status hues are the validated
+ * reference set (adjacent + all-pairs CVD and normal-vision separation checked
+ * against both surfaces). Text inks were selected for >= 4.5:1 on their own
+ * surface; `--fg-5` is >= 3:1 and is only ever used for inert placeholders.
+ */
+
+/* ---------------------------------------------------------------- dark ---- */
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-canvas: #0d0f12;
+  --bg-panel: #15181d;
+  --bg-sunken: #101317;
+  --bg-raised: #1d2127;
+  --bg-overlay: #0a0c0f;
+  --bg-input: #0f1216;
+  --bg-row-hover: #1d212788;
+
+  --border: #282d35;
+  --border-strong: #39404a;
+  --scrim: #0a0c0fcc;
+  --shadow-color: #00000073;
+
+  --fg-0: #f2f4f7;
+  --fg-1: #dde2e9;
+  --fg-2: #bec5cf;
+  --fg-3: #99a1ac;
+  --fg-4: #7e8792;
+  --fg-5: #69717c;
+
+  --accent: #3987e5;
+  --accent-solid: #3987e5;
+  --accent-hover: #5f9eea;
+  --accent-on: #08101c;
+  --accent-ink: #6fa8ef;
+  --accent-tint: #3987e514;
+  --accent-tint-2: #3987e526;
+  --accent-edge: #3987e54d;
+  --accent-edge-2: #3987e580;
+
+  --ok: #0ca30c;
+  --ok-ink: #4ec97a;
+  --ok-tint: #0ca30c1f;
+  --ok-edge: #0ca30c59;
+  --ok-edge-2: #0ca30c8c;
+
+  --warn: #fab219;
+  --warn-ink: #e5c062;
+  --warn-ink-2: #fad35e;
+  --warn-tint: #fab21917;
+  --warn-tint-2: #fab2192b;
+  --warn-edge: #fab2194d;
+  --warn-edge-2: #fab21980;
+
+  --high: #ec835a;
+  --high-ink: #ef9a6f;
+
+  --crit: #d03b3b;
+  --crit-ink: #ef7d7c;
+  --crit-tint: #d03b3b1f;
+  --crit-tint-2: #d03b3b33;
+  --crit-edge: #d03b3b59;
+  --crit-edge-2: #d03b3b99;
+
+  --nodata: #6b7280;
+  --nodata-ink: #98a1ad;
+
+  --cat-1: #3987e5;
+  --cat-2: #d95926;
+  --cat-3: #199e70;
+  --cat-2-ink: #e8825a;
+  --cat-2-tint: #d9592617;
+  --cat-2-tint-2: #d9592629;
+  --cat-2-edge: #d9592659;
+  --cat-2-edge-2: #d9592699;
+
+  --chart-grid: #242a32;
+  --chart-axis: #333a44;
+  --chart-tick: #7e8792;
+  --chart-series: #3987e5;
+  --chart-tooltip-bg: #191d23;
+}
+
+/* --------------------------------------------------------------- light ---- */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-canvas: #f4f5f7;
+  --bg-panel: #ffffff;
+  --bg-sunken: #f7f8fa;
+  --bg-raised: #edeff3;
+  --bg-overlay: #ffffff;
+  --bg-input: #ffffff;
+  --bg-row-hover: #eef1f599;
+
+  --border: #dfe3e8;
+  --border-strong: #c3cad3;
+  --scrim: #1b1f2799;
+  --shadow-color: #1b1f271f;
+
+  --fg-0: #12151a;
+  --fg-1: #252a31;
+  --fg-2: #3d444e;
+  --fg-3: #59616c;
+  --fg-4: #6b737e;
+  --fg-5: #818992;
+
+  --accent: #2a78d6;
+  --accent-solid: #1c62b8;
+  --accent-hover: #17539d;
+  --accent-on: #ffffff;
+  --accent-ink: #1c62b8;
+  --accent-tint: #2a78d614;
+  --accent-tint-2: #2a78d626;
+  --accent-edge: #2a78d659;
+  --accent-edge-2: #2a78d68c;
+
+  --ok: #0ca30c;
+  --ok-ink: #15803d;
+  --ok-tint: #0ca30c1a;
+  --ok-edge: #0ca30c66;
+  --ok-edge-2: #0ca30c99;
+
+  --warn: #fab219;
+  --warn-ink: #a16207;
+  --warn-ink-2: #8a6410;
+  --warn-tint: #d9971023;
+  --warn-tint-2: #d9971038;
+  --warn-edge: #c98d0f80;
+  --warn-edge-2: #c98d0fb3;
+
+  --high: #ec835a;
+  --high-ink: #b45309;
+
+  --crit: #d03b3b;
+  --crit-ink: #c02626;
+  --crit-tint: #d03b3b1a;
+  --crit-tint-2: #d03b3b2b;
+  --crit-edge: #d03b3b66;
+  --crit-edge-2: #d03b3b99;
+
+  --nodata: #8b939d;
+  --nodata-ink: #5f6873;
+
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+  --cat-2-ink: #c2410c;
+  --cat-2-tint: #eb68341f;
+  --cat-2-tint-2: #eb683433;
+  --cat-2-edge: #d9552266;
+  --cat-2-edge-2: #d9552299;
+
+  --chart-grid: #e7eaee;
+  --chart-axis: #cfd5dd;
+  --chart-tick: #6b737e;
+  --chart-series: #2a78d6;
+  --chart-tooltip-bg: #ffffff;
+}
+
+/* The OS preference only applies while the viewer has not chosen a theme, so a
+ * stored `data-theme` stamp wins in both directions and there is no flash on
+ * first paint for either preference. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+
+    --bg-canvas: #f4f5f7;
+    --bg-panel: #ffffff;
+    --bg-sunken: #f7f8fa;
+    --bg-raised: #edeff3;
+    --bg-overlay: #ffffff;
+    --bg-input: #ffffff;
+    --bg-row-hover: #eef1f599;
+
+    --border: #dfe3e8;
+    --border-strong: #c3cad3;
+    --scrim: #1b1f2799;
+    --shadow-color: #1b1f271f;
+
+    --fg-0: #12151a;
+    --fg-1: #252a31;
+    --fg-2: #3d444e;
+    --fg-3: #59616c;
+    --fg-4: #6b737e;
+    --fg-5: #818992;
+
+    --accent: #2a78d6;
+    --accent-solid: #1c62b8;
+    --accent-hover: #17539d;
+    --accent-on: #ffffff;
+    --accent-ink: #1c62b8;
+    --accent-tint: #2a78d614;
+    --accent-tint-2: #2a78d626;
+    --accent-edge: #2a78d659;
+    --accent-edge-2: #2a78d68c;
+
+    --ok-ink: #15803d;
+    --ok-tint: #0ca30c1a;
+    --ok-edge: #0ca30c66;
+    --ok-edge-2: #0ca30c99;
+
+    --warn-ink: #a16207;
+    --warn-ink-2: #8a6410;
+    --warn-tint: #d9971023;
+    --warn-tint-2: #d9971038;
+    --warn-edge: #c98d0f80;
+    --warn-edge-2: #c98d0fb3;
+
+    --high-ink: #b45309;
+
+    --crit-ink: #c02626;
+    --crit-tint: #d03b3b1a;
+    --crit-tint-2: #d03b3b2b;
+    --crit-edge: #d03b3b66;
+    --crit-edge-2: #d03b3b99;
+
+    --nodata: #8b939d;
+    --nodata-ink: #5f6873;
+
+    --cat-1: #2a78d6;
+    --cat-2: #eb6834;
+    --cat-3: #1baf7a;
+    --cat-2-ink: #c2410c;
+    --cat-2-tint: #eb68341f;
+    --cat-2-tint-2: #eb683433;
+    --cat-2-edge: #d9552266;
+    --cat-2-edge-2: #d9552299;
+
+    --chart-grid: #e7eaee;
+    --chart-axis: #cfd5dd;
+    --chart-tick: #6b737e;
+    --chart-series: #2a78d6;
+    --chart-tooltip-bg: #ffffff;
+  }
+}
+
+/* --------------------------------------------------------- non-colour ---- */
+
+:root {
+  /* 4px base step. Panels and grids use 3/4/5; screen padding uses 6/8. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --shadow-1: 0 1px 2px var(--shadow-color);
+  --shadow-2: 0 2px 8px var(--shadow-color);
+  --shadow-3: 0 12px 32px var(--shadow-color);
+
+  --ease: cubic-bezier(0.2, 0, 0.13, 1);
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
