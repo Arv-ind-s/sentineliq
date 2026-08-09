@@ -1,0 +1,35 @@
+{
+  "historical_fault_codes": {
+    "CNC-11": "PMP-02"
+  },
+  "scenarios": [
+    {
+      "expected": "ramping vibration",
+      "machine_id": "PUMP-07",
+      "mode": "bearing_wear",
+      "name": "protagonist",
+      "onset_ts": 1740555000000
+    },
+    {
+      "expected": "drift without failure",
+      "machine_id": "PRESS-03",
+      "mode": "sensor_drift",
+      "name": "false_positive_trap",
+      "onset_ts": 1740700800000
+    },
+    {
+      "expected": "sensor/history conflict",
+      "machine_id": "CNC-11",
+      "mode": "seal_leak",
+      "name": "conflicting_history",
+      "onset_ts": 1737360000000
+    },
+    {
+      "expected": "contiguous eight-hour gap",
+      "machine_id": "CONV-14",
+      "mode": "missing_data",
+      "name": "gateway_outage",
+      "onset_ts": null
+    }
+  ]
+}

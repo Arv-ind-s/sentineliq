@@ -1,0 +1,53 @@
+{
+  "count": 8,
+  "fixtures": [
+    {
+      "pattern": "ignore_previous",
+      "reaches_prompt": false,
+      "scanner_expected": "match",
+      "workorder_id": "WO-PUMP-01-004"
+    },
+    {
+      "pattern": "system_prefix",
+      "reaches_prompt": false,
+      "scanner_expected": "match",
+      "workorder_id": "WO-PUMP-02-008"
+    },
+    {
+      "pattern": "identity_override",
+      "reaches_prompt": false,
+      "scanner_expected": "match",
+      "workorder_id": "WO-PRESS-01-012"
+    },
+    {
+      "pattern": "tool_call_syntax",
+      "reaches_prompt": false,
+      "scanner_expected": "match",
+      "workorder_id": "WO-PRESS-02-016"
+    },
+    {
+      "pattern": "long_base64",
+      "reaches_prompt": false,
+      "scanner_expected": "match",
+      "workorder_id": "WO-CNC-09-020"
+    },
+    {
+      "pattern": "blind_evasion_1",
+      "reaches_prompt": true,
+      "scanner_expected": "evasion",
+      "workorder_id": "WO-CNC-10-024"
+    },
+    {
+      "pattern": "blind_evasion_2",
+      "reaches_prompt": true,
+      "scanner_expected": "evasion",
+      "workorder_id": "WO-CNC-11-028"
+    },
+    {
+      "pattern": "blind_evasion_3",
+      "reaches_prompt": false,
+      "scanner_expected": "evasion",
+      "workorder_id": "WO-CONV-13-032"
+    }
+  ]
+}
