@@ -39,3 +39,8 @@ ui/playwright-report/
 ui/test-results/
 ui/node_modules/.vite/
 *.tsbuildinfo
+
+# Local planning artifacts
+/spec.md
+/plan.md
+/tasks.md
