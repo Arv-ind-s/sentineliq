@@ -1,42 +1,80 @@
-# SentinelPdM
+# SentinelIQ
 
-SentinelPdM is an offline-first predictive-maintenance demonstration for a 15-machine plant. It replays deterministic sensor data, cleans and featurises the stream, serves scikit-learn predictions, retrieves maintenance evidence from a local index, and presents grounded diagnoses with citations. The system can use the OpenAI-compatible LLM gateway for narrative prose, but it remains usable with no API key and no network connection.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+SentinelIQ is an offline-first predictive-maintenance and fault-diagnosis platform for a simulated
+15-machine plant. It replays deterministic telemetry, cleans and featurises sensor streams, serves
+scikit-learn predictions, retrieves maintenance evidence, and presents grounded diagnoses with citations.
+An optional OpenAI-compatible LLM can improve the narrative, while every numerical prediction,
+guardrail, approval decision, and ERP authorization remains deterministic and auditable.
+
+SentinelIQ is a decision-support demonstration, not a safety controller. Maintenance actions require the
+documented human approval or acknowledgement boundary before the system can write to ERP.
+
+## Highlights
+
+- Deterministic failure probability, fault-mode, remaining-useful-life, and fused-risk predictions.
+- Grounded diagnoses with evidence citations, facts, assumptions, limits, confidence, and agent traces.
+- Strict A0 planner approval for immutable ERP work-order payloads and acknowledgement-only A1 routing.
+- Offline operation with no API key, external model, container runtime, or database server.
+- Replayable telemetry, downtime ledger, evaluation gates, audit hash chain, and mock ERP integration.
+- FastAPI and SQLite backend with a React, TypeScript, Vite, and Three.js interface.
+
+## Requirements
+
+- Python 3.12
+- Node.js 20 or newer with npm
+- Git
 
 ## Quickstart
 
-The canonical four-stage rehearsal path is the following. The first line creates and activates a user-space virtual environment; the final line starts the two backend processes.
+Clone the repository and start the backend plus mock ERP:
 
 ```bash
-python -m venv .venv && .venv/Scripts/activate
-pip install -r requirements.txt
+git clone https://github.com/Arv-ind-s/sentineliq.git
+cd sentineliq
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 cp .env.example .env
 python scripts/seed.py
 python scripts/run_all.py
 ```
 
-On Windows PowerShell, the equivalent activation/copy commands are:
+On Windows PowerShell, use:
 
 ```powershell
-python -m venv .venv; .\.venv\Scripts\Activate.ps1
+git clone https://github.com/Arv-ind-s/sentineliq.git
+Set-Location sentineliq
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 python scripts/seed.py
 python scripts/run_all.py
 ```
 
-`scripts/seed.py` generates the deterministic plant data, trains and verifies the model artifacts, backfills label-free time-indexed predictions, builds the local retrieval index, and seeds the users plus a real PUMP-07 approval. It is idempotent. Existing databases must first be upgraded with `python -m scripts.migrate --backfill-ledger`; the command creates and verifies a backup before changing the database. `scripts/run_all.py` starts the backend at `http://127.0.0.1:8000` and the mock ERP at `http://127.0.0.1:8001`; stop it with Ctrl-C to terminate both child processes. To run the React UI, open a second terminal after installing Node dependencies:
+`scripts/seed.py` generates the plant data, trains and verifies model artifacts, backfills label-free
+time-indexed predictions, builds the local retrieval index, and seeds users plus a real PUMP-07 approval.
+It is idempotent. Existing databases must first be upgraded with
+`python -m scripts.migrate --backfill-ledger`; the command creates and verifies a backup before changing
+the database.
+
+`scripts/run_all.py` starts the API at `http://127.0.0.1:8000` and the mock ERP at
+`http://127.0.0.1:8001`. Stop it with Ctrl-C. To start the React UI, open another terminal:
 
 ```bash
 cd ui
-npm install
+npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
 The API's generated OpenAPI documentation is at [`http://127.0.0.1:8000/docs`](http://127.0.0.1:8000/docs). The UI is normally at `http://127.0.0.1:5173`.
 
-The `LLM_API_KEY` in `.env` is optional. Leave it empty for the deterministic offline-template path. Never commit `.env` or place a gateway key in `config.yaml`.
+The `LLM_API_KEY` in `.env` is optional. Leave it empty for the deterministic offline-template path.
+Never commit `.env` or place a gateway key in `config.yaml`.
 
-## What is shipped
+## Core capabilities
 
 - Live Floor and Machine Detail views for all 15 machines, with replayed telemetry and health state.
 - Deterministic failure, fault-mode, RUL, and fused-risk predictions from versioned model artifacts.
@@ -67,7 +105,7 @@ The Python API is the single browser-facing origin and owns authentication, orch
 
 Numerical predictions never depend on the LLM. The default provider is the configured `langchain` adapter for the LLM gateway, with `httpx` retained as a selectable adapter; when the key is absent, the network is unavailable, or the circuit breaker is open, the deterministic template is used.
 
-## Five-minute demo script
+## Five-minute demo
 
 1. Log in as `planner` with the local fixture password `fixture`. The other seeded users are `operator`, `technician`, and `admin`; each has the role matching its username.
 2. Open Live Floor and let replay run. The seeded `PUMP-07` bearing-wear scenario crosses the tuned threshold at 52.3 seconds of the 600× replay; the live alert appears at about 56.1 seconds. Open the alert and choose Diagnosis.
@@ -77,22 +115,38 @@ Numerical predictions never depend on the LLM. The default provider is the confi
 
 The planted scenarios and expected outputs are recorded in [`data/DEMO_NOTES.md`](data/DEMO_NOTES.md). The measured evaluation is in [`eval/REPORT.md`](eval/REPORT.md).
 
-For the repeatable judge-facing rehearsal, run `python scripts/demo_rehearsal.py --interactive` from
-an authenticated admin session. It fetches measured diagnosis/ledger values, resets replay to t0 before
-each take, waits for the PUMP-07 cue, and records the presenter-controlled ≤30s / ≤20s timings.
+For a repeatable rehearsal, run `python scripts/demo_rehearsal.py --interactive` from an authenticated
+admin session. It fetches measured diagnosis and ledger values, resets replay to t0, waits for the
+PUMP-07 cue, and records the presenter-controlled timings.
+
+## Repository layout
+
+```text
+agents/     Agent roles, prompts, orchestration, guardrails, and ERP action boundary
+api/        FastAPI routes, authentication, schemas, and HTTP security
+core/       Persistence, prediction, preprocessing, retrieval, ledger, clocks, and audit
+data/       Deterministic generator, scenario metadata, and checked-in demo notes
+erp/        Independent mock ERP service and client-facing history helpers
+eval/       Reproducible evaluation harness, scenarios, and generated reports
+llm/        Provider-neutral LLM clients, TLS policy, embeddings, and response cache
+scripts/    Seed, migration, replay, backup, evaluation, and startup commands
+tests/      Backend, workflow, migration, security, persistence, and KPI tests
+ui/         React/TypeScript dashboard and Playwright tests
+```
 
 ## Validation commands
 
 ```bash
 python -m pytest -q
 python scripts/evaluate.py
+cd ui
+npm run lint
+npm run build
 ```
 
 The test suite includes the balanced-accuracy and downtime KPI gates, demo-integrity checks, security checks, and agent/API tests. The evaluation script regenerates `eval/REPORT.md` and `eval/report.json` from the current artifacts. The current run is intentionally reported in tokens rather than a fabricated currency cost because the internal gateway does not publish a rate.
 
-## Documentation map
-
-The documentation deliverable set is 7/7: these five authored documents, the generated evaluation report, the generated demo notes, and the generated OpenAPI surface at `/docs`.
+## Documentation
 
 - [`DEPLOYMENT.md`](DEPLOYMENT.md): installation, configuration, LLM gateway/TLS posture, offline operation, backup, retention, and capacity.
 - [`USER_GUIDE.md`](USER_GUIDE.md): operator, technician, and planner workflows, diagnosis interpretation, confidence, escalation, and limitations.
@@ -101,3 +155,7 @@ The documentation deliverable set is 7/7: these five authored documents, the gen
 - [`eval/REPORT.md`](eval/REPORT.md): generated evaluation report.
 - [`data/DEMO_NOTES.md`](data/DEMO_NOTES.md): generated planted-scenario notes.
 - `/docs`: generated OpenAPI documentation while the API is running.
+
+## License
+
+SentinelIQ is available under the [MIT License](LICENSE).
