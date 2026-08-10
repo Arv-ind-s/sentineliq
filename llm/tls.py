@@ -1,4 +1,4 @@
-"""TLS policy for the configured LLM gateway only."""
+"""TLS policy for the configured Gemini API client only."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ from pathlib import Path
 import truststore
 
 
-GatewayVerifySetting = bool | str | ssl.SSLContext
+GeminiVerifySetting = bool | str | ssl.SSLContext
 
 
-def gateway_verify_setting(*, tls_verify: bool, cert_file: str | None = None) -> GatewayVerifySetting:
+def gemini_verify_setting(*, tls_verify: bool, cert_file: str | None = None) -> GeminiVerifySetting:
     """Return an httpx verification setting using the native OS trust store.
 
     Python's bundled CA file may not include certificates installed by managed

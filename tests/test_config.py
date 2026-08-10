@@ -26,8 +26,9 @@ def test_loads_committed_config() -> None:
     assert config.data.seed == 42
     assert config.plant.machines == 15
     assert config.predict.threshold_tau_default == 0.42
-    assert config.llm.base_url == "https://llm-gateway.example.com"
-    assert config.llm.models.coordinator.name == "openai-compatible-chat"
+    assert config.llm.provider == "gemini"
+    assert config.llm.base_url == "https://generativelanguage.googleapis.com/v1beta"
+    assert config.llm.models.coordinator.name == "gemini-2.5-flash-lite"
     assert config.llm.models.embeddings.enabled is False
     assert config.db_url == "sqlite:///data/plant.db"
     assert settings.predict.threshold_tau_default == 0.42

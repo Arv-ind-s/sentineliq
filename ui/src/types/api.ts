@@ -70,7 +70,7 @@ export interface EvalSummary {
   hallucination?: { scenarios: EvalScenario[]; };
 }
 export interface EvalReportResponse { generated_at: Timestamp; model_version: string; prompt_version?: string; run_mode?: string; metrics: EvalMetric[]; notes: string[]; summary?: EvalSummary; }
-export interface LlmOfflineResponse { enabled: boolean; effective_offline: boolean; mode: "template" | "gateway"; model: string; provider: string; }
+export interface LlmOfflineResponse { enabled: boolean; effective_offline: boolean; mode: "template" | "gemini"; model: string; provider: string; }
 export interface AuditEntry { seq: number; ts: Timestamp; actor: string; action: string; subject: string; payload: Record<string, unknown>; prev_hash: string; hash: string; }
 export interface AuditVerifyResponse { intact: boolean; entries: number; checked_entries: number; first_invalid_seq: number | null; }
 export interface QuarantineEntry { quarantine_id: string; workorder_id: string; machine_id: string; status: "quarantined" | "released"; patterns: string[]; text: string; audit_seq: number; detected_at: Timestamp; released_at: Timestamp | null; released_by: string | null; release_reason: string | null; }

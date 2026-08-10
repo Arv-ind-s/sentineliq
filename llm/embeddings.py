@@ -1,7 +1,7 @@
 """Offline-safe embedding providers.
 
 TF-IDF is the default and intentional MVP path.  The provider interface keeps
-the retrieval layer independent from a future gateway embedding model.
+the retrieval layer independent from a future remote embedding model.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ class EmbeddingProvider(Protocol):
 
 
 class TfidfEmbeddingProvider:
-    """Deterministic sparse TF-IDF provider used when gateway embeddings are off."""
+    """Deterministic sparse TF-IDF provider used when remote embeddings are off."""
 
     def __init__(self, *, max_features: int = 4000) -> None:
         self._vectorizer = TfidfVectorizer(max_features=max_features, lowercase=True, norm="l2") if TfidfVectorizer is not None else None
@@ -88,11 +88,12 @@ class TfidfEmbeddingProvider:
 def create_embeddings(*, enabled: bool = False, max_features: int = 4000) -> TfidfEmbeddingProvider:
     """Create the configured offline provider.
 
-    Gateway embeddings are intentionally not enabled in the MVP because the
-    configured gateway is confirmed for chat only.  ``enabled`` remains an
-    explicit seam so a future provider can be added without changing callers.
+    Remote embeddings are intentionally not enabled in the MVP because the
+    configured Gemini integration is confirmed for chat only. ``enabled``
+    remains an explicit seam so a future provider can be added without
+    changing callers.
     """
 
     if enabled:
-        raise RuntimeError("gateway embeddings are not available; use the TF-IDF provider")
+        raise RuntimeError("Gemini embeddings are not configured; use the TF-IDF provider")
     return TfidfEmbeddingProvider(max_features=max_features)

@@ -30,7 +30,7 @@ Use the lowest role that can complete the task. The fixture credential is for th
 
 1. Open Machine Detail for the affected machine and inspect the selected sensor channels, quality flags, and event timeline.
 2. In Diagnosis, start with Facts. Confirm that the risk, threshold comparison, fault mode, and RUL values match the displayed evidence bundle.
-3. Read Assumptions and Limits. A missing window, stale signal, `sensor_drift`, conflicting maintenance history, or gateway outage should be visible rather than silently converted into certainty.
+3. Read Assumptions and Limits. A missing window, stale signal, `sensor_drift`, conflicting maintenance history, or Gemini API outage should be visible rather than silently converted into certainty.
 4. Use the citation scrubber to open the exact sensor interval or maintenance row. Check whether the evidence is recent, relevant, and from the expected machine.
 5. Treat recommended actions as reviewable options. If the recommendation is unsafe, unsupported, or not grounded in the cited evidence, do not advance it; use the escalation path and record the concern.
 
@@ -100,4 +100,4 @@ The amber Offline diagnosis mode banner and `deterministic-template` stamp mean 
 - It cannot safely resolve contradictory evidence by choosing the convenient source; it exposes the conflict or escalates.
 - It cannot make the seeded benchmark metrics representative of every plant, machine family, operating regime, or unseen sensor design.
 - It cannot operate the plant, change PLC logic, bypass lockout/tagout, issue safety clearance, or perform a physical repair.
-- It cannot make gateway TLS exceptions safe by itself. `tls_verify: false` is a scoped, explicitly escalated demo setting with residual interception risk.
+- It cannot make Gemini TLS exceptions safe by itself. `tls_verify: false` is a scoped, explicitly escalated demo setting with residual interception risk.

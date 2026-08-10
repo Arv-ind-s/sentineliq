@@ -1,18 +1,18 @@
 {
   "downtime": {
     "event_total": 60,
-    "false_positive_count": 0,
-    "false_positive_rate": 0.0,
-    "implied_min_recall": 0.278,
+    "false_positive_count": 11,
+    "false_positive_rate": 0.18333333333333332,
+    "implied_min_recall": 0.34950000000000003,
     "passed": true,
     "policies": {
       "fixed_schedule": {
-        "cost_gbp": 1013504.3116883117,
+        "cost_gbp": 1013745.9783549784,
         "downtime_cost_gbp": 972375.0,
         "downtime_minutes": 21900.0,
         "false_positive_cost_gbp": 0.0,
         "false_positive_count": 0,
-        "maintenance_cost_gbp": 41129.31168831169,
+        "maintenance_cost_gbp": 41370.97835497835,
         "missed_failure_ids": [
           "1",
           "10",
@@ -77,18 +77,18 @@
         ],
         "per_machine": {
           "CNC-09": {
-            "cost_gbp": 76989.54545454546,
+            "cost_gbp": 77231.21212121213,
             "downtime_cost_gbp": 74216.66666666667,
             "downtime_minutes": 1460.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
             "machine_id": "CNC-09",
-            "maintenance_cost_gbp": 2772.878787878788,
+            "maintenance_cost_gbp": 3014.5454545454545,
             "missed_failure_costs_gbp": {
-              "19": 16737.5,
-              "34": 16737.5,
-              "4": 16737.5,
-              "50": 16737.5
+              "19": 16797.916666666664,
+              "34": 16797.916666666664,
+              "4": 16797.916666666664,
+              "50": 16797.916666666664
             },
             "missed_failure_ids": [
               "34",
@@ -409,151 +409,115 @@
         "policy": "fixed_schedule"
       },
       "predictive": {
-        "cost_gbp": 494357.1904761905,
-        "downtime_cost_gbp": 466941.6666666667,
-        "downtime_minutes": 10230.0,
-        "false_positive_cost_gbp": 0.0,
-        "false_positive_count": 0,
-        "maintenance_cost_gbp": 27415.52380952381,
+        "cost_gbp": 375339.2727272727,
+        "downtime_cost_gbp": 342970.8333333333,
+        "downtime_minutes": 7540.0,
+        "false_positive_cost_gbp": 54308.78787878788,
+        "false_positive_count": 11,
+        "maintenance_cost_gbp": 32368.439393939392,
         "missed_failure_ids": [
-          "10",
-          "11",
-          "14",
-          "15",
-          "22",
-          "25",
           "26",
           "27",
+          "28",
           "29",
-          "30",
-          "38",
-          "41",
-          "42",
-          "44",
-          "45",
-          "53",
-          "56",
-          "57",
-          "59",
-          "60",
-          "7"
+          "30"
         ],
         "per_machine": {
           "CNC-09": {
-            "cost_gbp": 20183.333333333332,
+            "cost_gbp": 20079.090909090908,
             "downtime_cost_gbp": 18300.0,
             "downtime_minutes": 360.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
             "machine_id": "CNC-09",
-            "maintenance_cost_gbp": 1883.3333333333333,
+            "maintenance_cost_gbp": 1779.090909090909,
             "missed_failure_costs_gbp": {},
             "missed_failure_ids": [],
             "planned_actions": 4
           },
           "CNC-10": {
-            "cost_gbp": 20801.904761904763,
-            "downtime_cost_gbp": 19050.0,
-            "downtime_minutes": 360.0,
-            "false_positive_cost_gbp": 0.0,
-            "false_positive_count": 0,
+            "cost_gbp": 31543.636363636364,
+            "downtime_cost_gbp": 28575.0,
+            "downtime_minutes": 540.0,
+            "false_positive_cost_gbp": 10514.545454545454,
+            "false_positive_count": 2,
             "machine_id": "CNC-10",
-            "maintenance_cost_gbp": 1751.904761904762,
+            "maintenance_cost_gbp": 2968.6363636363635,
             "missed_failure_costs_gbp": {},
             "missed_failure_ids": [],
-            "planned_actions": 4
+            "planned_actions": 6
           },
           "CNC-11": {
-            "cost_gbp": 90347.5,
-            "downtime_cost_gbp": 88000.0,
-            "downtime_minutes": 1600.0,
-            "false_positive_cost_gbp": 0.0,
-            "false_positive_count": 0,
+            "cost_gbp": 44911.166666666664,
+            "downtime_cost_gbp": 42350.0,
+            "downtime_minutes": 770.0,
+            "false_positive_cost_gbp": 5368.333333333333,
+            "false_positive_count": 1,
             "machine_id": "CNC-11",
-            "maintenance_cost_gbp": 2347.5,
+            "maintenance_cost_gbp": 2561.1666666666665,
             "missed_failure_costs_gbp": {
-              "15": 18069.5,
-              "25": 18069.5,
-              "30": 18069.5,
-              "45": 18069.5,
-              "60": 18069.5
+              "30": 18069.5
             },
             "missed_failure_ids": [
-              "45",
-              "15",
-              "60",
-              "30",
-              "25"
+              "30"
             ],
-            "planned_actions": 0
+            "planned_actions": 5
           },
           "CONV-13": {
-            "cost_gbp": 22402.85714285714,
+            "cost_gbp": 22310.909090909092,
             "downtime_cost_gbp": 20550.0,
             "downtime_minutes": 360.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
             "machine_id": "CONV-13",
-            "maintenance_cost_gbp": 1852.857142857143,
+            "maintenance_cost_gbp": 1760.909090909091,
             "missed_failure_costs_gbp": {},
             "missed_failure_ids": [],
             "planned_actions": 4
           },
           "CONV-14": {
-            "cost_gbp": 77494.7619047619,
-            "downtime_cost_gbp": 75733.33333333333,
-            "downtime_minutes": 1280.0,
-            "false_positive_cost_gbp": 0.0,
-            "false_positive_count": 0,
+            "cost_gbp": 60080.281385281385,
+            "downtime_cost_gbp": 56208.333333333336,
+            "downtime_minutes": 950.0,
+            "false_positive_cost_gbp": 23260.909090909092,
+            "false_positive_count": 4,
             "machine_id": "CONV-14",
-            "maintenance_cost_gbp": 1761.4285714285713,
+            "maintenance_cost_gbp": 3871.9480519480517,
             "missed_failure_costs_gbp": {
-              "10": 19373.690476190473,
-              "26": 19373.690476190473,
-              "41": 19373.690476190473,
-              "56": 19373.690476190473
+              "26": 19373.690476190473
             },
             "missed_failure_ids": [
-              "56",
-              "26",
-              "10",
-              "41"
+              "26"
             ],
-            "planned_actions": 0
+            "planned_actions": 7
           },
           "PRESS-01": {
-            "cost_gbp": 17840.0,
+            "cost_gbp": 17930.909090909092,
             "downtime_cost_gbp": 16050.0,
             "downtime_minutes": 360.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
             "machine_id": "PRESS-01",
-            "maintenance_cost_gbp": 1790.0,
+            "maintenance_cost_gbp": 1880.909090909091,
             "missed_failure_costs_gbp": {},
             "missed_failure_ids": [],
             "planned_actions": 4
           },
           "PRESS-02": {
-            "cost_gbp": 61515.71428571429,
-            "downtime_cost_gbp": 59733.333333333336,
-            "downtime_minutes": 1280.0,
+            "cost_gbp": 29419.61038961039,
+            "downtime_cost_gbp": 27533.333333333332,
+            "downtime_minutes": 590.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
             "machine_id": "PRESS-02",
-            "maintenance_cost_gbp": 1782.3809523809523,
+            "maintenance_cost_gbp": 1886.2770562770563,
             "missed_failure_costs_gbp": {
-              "14": 15378.928571428572,
-              "29": 15378.928571428572,
-              "44": 15378.928571428572,
-              "59": 15378.928571428572
+              "29": 15378.928571428572
             },
             "missed_failure_ids": [
-              "44",
-              "14",
-              "59",
               "29"
             ],
-            "planned_actions": 0
+            "planned_actions": 3
           },
           "PRESS-03": {
             "cost_gbp": 0.0,
@@ -568,130 +532,118 @@
             "planned_actions": 0
           },
           "PUMP-01": {
-            "cost_gbp": 9508.5,
+            "cost_gbp": 9355.0,
             "downtime_cost_gbp": 8100.0,
             "downtime_minutes": 270.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
             "machine_id": "PUMP-01",
-            "maintenance_cost_gbp": 1408.5,
+            "maintenance_cost_gbp": 1255.0,
             "missed_failure_costs_gbp": {},
             "missed_failure_ids": [],
             "planned_actions": 3
           },
           "PUMP-02": {
-            "cost_gbp": 16701.190476190477,
+            "cost_gbp": 16738.636363636364,
             "downtime_cost_gbp": 14437.5,
             "downtime_minutes": 450.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
             "machine_id": "PUMP-02",
-            "maintenance_cost_gbp": 2263.690476190476,
+            "maintenance_cost_gbp": 2301.136363636364,
             "missed_failure_costs_gbp": {},
             "missed_failure_ids": [],
             "planned_actions": 5
           },
           "PUMP-03": {
-            "cost_gbp": 45536.66666666667,
-            "downtime_cost_gbp": 43733.333333333336,
-            "downtime_minutes": 1280.0,
-            "false_positive_cost_gbp": 0.0,
-            "false_positive_count": 0,
+            "cost_gbp": 25565.075757575756,
+            "downtime_cost_gbp": 23233.333333333332,
+            "downtime_minutes": 680.0,
+            "false_positive_cost_gbp": 3545.227272727273,
+            "false_positive_count": 1,
             "machine_id": "PUMP-03",
-            "maintenance_cost_gbp": 1803.3333333333333,
+            "maintenance_cost_gbp": 2331.7424242424245,
             "missed_failure_costs_gbp": {
-              "11": 11384.166666666668,
-              "27": 11384.166666666668,
-              "42": 11384.166666666668,
-              "57": 11384.166666666668
+              "27": 11384.166666666668
             },
             "missed_failure_ids": [
-              "57",
-              "27",
-              "11",
-              "42"
+              "27"
             ],
-            "planned_actions": 0
+            "planned_actions": 4
           },
           "PUMP-04": {
-            "cost_gbp": 14961.904761904761,
-            "downtime_cost_gbp": 13050.0,
+            "cost_gbp": 22123.636363636364,
+            "downtime_cost_gbp": 19575.0,
+            "downtime_minutes": 540.0,
+            "false_positive_cost_gbp": 7374.545454545454,
+            "false_positive_count": 2,
+            "machine_id": "PUMP-04",
+            "maintenance_cost_gbp": 2548.6363636363635,
+            "missed_failure_costs_gbp": {},
+            "missed_failure_ids": [],
+            "planned_actions": 6
+          },
+          "PUMP-05": {
+            "cost_gbp": 15699.090909090908,
+            "downtime_cost_gbp": 13800.0,
             "downtime_minutes": 360.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
-            "machine_id": "PUMP-04",
-            "maintenance_cost_gbp": 1911.904761904762,
+            "machine_id": "PUMP-05",
+            "maintenance_cost_gbp": 1899.090909090909,
             "missed_failure_costs_gbp": {},
             "missed_failure_ids": [],
             "planned_actions": 4
           },
-          "PUMP-05": {
-            "cost_gbp": 50887.142857142855,
-            "downtime_cost_gbp": 49066.666666666664,
-            "downtime_minutes": 1280.0,
-            "false_positive_cost_gbp": 0.0,
-            "false_positive_count": 0,
-            "machine_id": "PUMP-05",
-            "maintenance_cost_gbp": 1820.4761904761904,
-            "missed_failure_costs_gbp": {
-              "22": 12721.785714285714,
-              "38": 12721.785714285714,
-              "53": 12721.785714285714,
-              "7": 12721.785714285714
-            },
-            "missed_failure_ids": [
-              "53",
-              "7",
-              "38",
-              "22"
-            ],
-            "planned_actions": 0
-          },
           "PUMP-06": {
-            "cost_gbp": 20403.571428571428,
-            "downtime_cost_gbp": 18187.5,
-            "downtime_minutes": 450.0,
+            "cost_gbp": 29865.638528138526,
+            "downtime_cost_gbp": 27483.333333333332,
+            "downtime_minutes": 680.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
             "machine_id": "PUMP-06",
-            "maintenance_cost_gbp": 2216.0714285714284,
-            "missed_failure_costs_gbp": {},
-            "missed_failure_ids": [],
-            "planned_actions": 5
+            "maintenance_cost_gbp": 2382.305194805195,
+            "missed_failure_costs_gbp": {
+              "28": 13376.54761904762
+            },
+            "missed_failure_ids": [
+              "28"
+            ],
+            "planned_actions": 4
           },
           "PUMP-07": {
-            "cost_gbp": 25772.142857142855,
-            "downtime_cost_gbp": 22950.0,
-            "downtime_minutes": 540.0,
-            "false_positive_cost_gbp": 0.0,
-            "false_positive_count": 0,
+            "cost_gbp": 29716.590909090908,
+            "downtime_cost_gbp": 26775.0,
+            "downtime_minutes": 630.0,
+            "false_positive_cost_gbp": 4245.227272727273,
+            "false_positive_count": 1,
             "machine_id": "PUMP-07",
-            "maintenance_cost_gbp": 2822.142857142857,
+            "maintenance_cost_gbp": 2941.590909090909,
             "missed_failure_costs_gbp": {},
             "missed_failure_ids": [],
-            "planned_actions": 6
+            "planned_actions": 7
           }
         },
-        "planned_actions": 39,
+        "planned_actions": 66,
         "policy": "predictive"
       },
       "reactive": {
-        "cost_gbp": 879415.5238095238,
+        "cost_gbp": 879657.1904761904,
         "downtime_cost_gbp": 852000.0,
         "downtime_minutes": 19200.0,
         "false_positive_cost_gbp": 0.0,
         "false_positive_count": 0,
-        "maintenance_cost_gbp": 27415.52380952381,
+        "maintenance_cost_gbp": 27657.190476190477,
         "missed_failure_ids": [],
         "per_machine": {
           "CNC-09": {
-            "cost_gbp": 66950.0,
+            "cost_gbp": 67191.66666666666,
             "downtime_cost_gbp": 65066.666666666664,
             "downtime_minutes": 1280.0,
             "false_positive_cost_gbp": 0.0,
             "false_positive_count": 0,
             "machine_id": "CNC-09",
-            "maintenance_cost_gbp": 1883.3333333333333,
+            "maintenance_cost_gbp": 2125.0,
             "missed_failure_costs_gbp": {},
             "missed_failure_ids": [],
             "planned_actions": 0
@@ -869,8 +821,8 @@
         "policy": "reactive"
       }
     },
-    "recall": 0.65,
-    "reduction_pct": 46.71875,
+    "recall": 0.9166666666666666,
+    "reduction_pct": 60.729166666666664,
     "target_reduction_pct": 20.0,
     "tau": 0.42
   },
@@ -881,7 +833,7 @@
       "target": 0.95
     },
     "downtime_reduction": {
-      "observed": 46.71875,
+      "observed": 60.729166666666664,
       "passed": true,
       "target": 20.0
     },
@@ -912,7 +864,7 @@
     },
     "latency_p95": {
       "measured_mode": "templated",
-      "observed": 3.85419003432618,
+      "observed": 1.4048729000023772,
       "passed": true,
       "target": 6000
     },
@@ -945,7 +897,7 @@
       "target": 3500
     }
   },
-  "generated_at": "2026-08-07T17:28:13.417723+00:00",
+  "generated_at": "2026-08-10T18:08:09.032594+00:00",
   "groundedness": {
     "citation_coverage": 1.0,
     "numeric_grounding_first_try": 1.0
@@ -1158,34 +1110,34 @@
   },
   "latency": {
     "cost": {
-      "basis": "LLM gateway is internal; no billed rate is exposed",
+      "basis": "offline evaluation; no Gemini API call was made",
       "reported": false
     },
     "fallback_actions": [],
     "live_probe_latency_ms": null,
-    "model": "openai-compatible-chat",
-    "p50_ms": 2.0744000794366,
-    "p95_ms": 3.85419003432618,
+    "model": "gemini-2.5-flash-lite",
+    "p50_ms": 0.8837290001793008,
+    "p95_ms": 1.4048729000023772,
     "run_mode": "templated",
     "stages": {
       "coordinator": {
-        "p50_ms": 0.22849999368190765,
-        "p95_ms": 0.37276002112776047,
+        "p50_ms": 0.11454150001100061,
+        "p95_ms": 0.19872644993483846,
         "samples": 20
       },
       "fusion": {
-        "p50_ms": 0.038950005546212196,
-        "p95_ms": 0.067285040859133,
+        "p50_ms": 0.018500000123822247,
+        "p95_ms": 0.035152399834714756,
         "samples": 20
       },
       "guardrail": {
-        "p50_ms": 1.785449916496873,
-        "p95_ms": 3.4123999532312297,
+        "p50_ms": 0.7529165000050853,
+        "p95_ms": 1.1699975999249577,
         "samples": 20
       },
       "total": {
-        "p50_ms": 2.0744000794366,
-        "p95_ms": 3.85419003432618,
+        "p50_ms": 0.8837290001793008,
+        "p95_ms": 1.4048729000023772,
         "samples": 20
       }
     },
@@ -1196,7 +1148,7 @@
       "p95": 0
     }
   },
-  "model": "openai-compatible-chat",
+  "model": "gemini-2.5-flash-lite",
   "prediction": {
     "failure": {
       "balanced_accuracy": 0.986787699340294,
@@ -1234,10 +1186,10 @@
         ],
         [
           0,
-          2,
+          1,
           477,
           0,
-          9
+          10
         ],
         [
           0,
@@ -1273,12 +1225,12 @@
     },
     "rul": {
       "interval_calibration": {
-        "lower_adjustment_days": 20.99162577319374,
+        "lower_adjustment_days": 20.991625773193743,
         "method": "validation maximum residual widening",
-        "upper_adjustment_days": 3.4333384874137955,
+        "upper_adjustment_days": 3.433338487413799,
         "validation_rows": 2880
       },
-      "mae_days": 16.20961605816056,
+      "mae_days": 16.209616058160563,
       "p10_p90_coverage": 0.9279453467388502,
       "quantile_ordering": 1.0,
       "raw_p10_p90_coverage": 0.5067027584428977,

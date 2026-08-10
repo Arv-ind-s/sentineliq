@@ -70,7 +70,7 @@ class FakeLLM:
 
     def chat(self, messages, model_cfg) -> LLMResponse:
         self.calls += 1
-        return LLMResponse(self.text, 100, 40, "openai-compatible-chat", 2.0, provider=self.provider)
+        return LLMResponse(self.text, 100, 40, "gemini-2.5-flash-lite", 2.0, provider=self.provider)
 
 
 def test_fusion_runs_before_llm_and_fixed_numbers_survive(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -94,7 +94,7 @@ def test_fusion_runs_before_llm_and_fixed_numbers_survive(monkeypatch: pytest.Mo
 
     assert order == ["fusion", "llm"]
     assert llm.calls == 1
-    assert result.output["model"] == "openai-compatible-chat"
+    assert result.output["model"] == "gemini-2.5-flash-lite"
     assert result.output["provider"] == "test-provider"
     assert result.output["generated"] is True
     assert result.output["prompt_version"] == "v1"
@@ -118,7 +118,7 @@ def test_fenced_and_preamble_responses_are_tolerated(prefix: str) -> None:
     assert result.fallback_used is False
 
 
-def test_gateway_style_grouped_and_context_citations_are_resolved() -> None:
+def test_gemini_style_grouped_and_context_citations_are_resolved() -> None:
     payload = _llm_payload()
     payload["reasoning_steps"] = [
         "Vibration evidence supports the prediction [S1].",
@@ -141,7 +141,7 @@ def test_gateway_style_grouped_and_context_citations_are_resolved() -> None:
     assert "[S1][M1]" in result.output["reasoning_steps"][2]
 
 
-def test_gateway_reasoning_without_trailing_tags_is_grounded_from_known_evidence() -> None:
+def test_gemini_reasoning_without_trailing_tags_is_grounded_from_known_evidence() -> None:
     payload = _llm_payload()
     payload["reasoning_steps"] = [
         "Sensor vibration supports the current prediction.",
@@ -212,7 +212,7 @@ def test_coordinator_and_maintenance_log_use_at_most_two_llm_calls() -> None:
                         "notes": ["Prior repair is recorded [M1]"],
                     }
                 )
-            return LLMResponse(text, 10, 20, "openai-compatible-chat", 1.0, provider=self.provider)
+            return LLMResponse(text, 10, 20, "gemini-2.5-flash-lite", 1.0, provider=self.provider)
 
     class FakeERP:
         def search_workorders(self, machine_id: str, since=None, limit: int = 6):

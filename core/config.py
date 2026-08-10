@@ -32,8 +32,11 @@ class EnvSettings(BaseSettings):
     )
 
     config_path: str = Field(str(DEFAULT_CONFIG_PATH), validation_alias="SENTINEL_CONFIG_PATH")
-    llm_base_url: str = Field("https://llm-gateway.example.com", validation_alias="LLM_BASE_URL")
-    llm_api_key: str = Field("", validation_alias="LLM_API_KEY")
+    gemini_base_url: str = Field(
+        "https://generativelanguage.googleapis.com/v1beta",
+        validation_alias="GEMINI_BASE_URL",
+    )
+    gemini_api_key: str = Field("", validation_alias="GEMINI_API_KEY")
     erp_base_url: str = Field("http://127.0.0.1:8001", validation_alias="ERP_BASE_URL")
     erp_api_key: str = Field("", validation_alias="ERP_API_KEY")
     jwt_secret: str = Field("", validation_alias="JWT_SECRET")
@@ -143,13 +146,12 @@ class PriceConfig(StrictModel):
 
 
 class LLMConfig(StrictModel):
-    provider: Literal["langchain", "httpx"]
+    provider: Literal["gemini"]
     base_url: str
     api_key: str = ""
-    chat_path: str
     tls_verify: bool
     models: LLMModelsConfig
-    json_mode: Literal["auto", "response_format", "prompt_only"]
+    json_mode: Literal["response_mime_type", "prompt_only"]
     prompt_version: str
     timeout_s: int = Field(gt=0)
     max_retries: int = Field(ge=0)
@@ -230,8 +232,8 @@ def _walk_for_literal_secrets(value: Any, path: str = "") -> list[str]:
 
 def _env_values(env: EnvSettings) -> dict[str, str]:
     return {
-        "LLM_BASE_URL": env.llm_base_url,
-        "LLM_API_KEY": env.llm_api_key,
+        "GEMINI_BASE_URL": env.gemini_base_url,
+        "GEMINI_API_KEY": env.gemini_api_key,
         "ERP_BASE_URL": env.erp_base_url,
         "ERP_API_KEY": env.erp_api_key,
         "JWT_SECRET": env.jwt_secret,

@@ -1,11 +1,11 @@
 {
   "branch_taken": "offline_template",
   "first_token_latency_ms": null,
-  "measured_at": "2026-08-07T07:25:49.879532+00:00",
-  "model": "openai-compatible-chat",
+  "measured_at": "2026-08-10T18:07:52.575620+00:00",
+  "model": "gemini-2.5-flash-lite",
   "observed_output_tokens": null,
   "observed_output_tokens_per_second": null,
-  "provider": "langchain",
+  "provider": "gemini",
   "reachable": false,
   "reason": "auth"
 }

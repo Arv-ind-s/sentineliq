@@ -3,7 +3,7 @@
 The coordinator is deliberately a thin narrative layer.  It computes the
 deterministic fusion decision before constructing a prompt, and it never lets
 the language model change that decision.  The module is also usable offline:
-when the gateway is unavailable (or no key is configured), the same strict
+when the Gemini API is unavailable (or no key is configured), the same strict
 output contract is populated by a deterministic template.
 """
 
@@ -403,7 +403,7 @@ def _context_for_prompt(
 
 
 def _ground_reasoning_step(value: Any, valid_ids: set[str]) -> str:
-    """Attach resolvable provenance when a gateway omits trailing tags.
+    """Attach resolvable provenance when Gemini omits trailing tags.
 
     The model is not allowed to invent an identifier here: tags are selected
     only from evidence already present in the bounded prompt.  Numeric and

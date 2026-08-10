@@ -218,7 +218,7 @@ def test_cnc_11_preserves_conflicting_history(context: tuple[ParquetSource, Any,
     assert result.decision.confidence == pytest.approx(agreeing.decision.confidence * settings.fusion.rules.evidence_conflict_factor, abs=0.01)
 
 
-def test_conv_14_withholds_prediction_during_gateway_gap(context: tuple[ParquetSource, Any, dict[str, Any], int]) -> None:
+def test_conv_14_withholds_prediction_during_connectivity_gap(context: tuple[ParquetSource, Any, dict[str, Any], int]) -> None:
     source, predictor, _, t0_ms = context
     end_ms = t0_ms + 34 * 60 * 60 * 1000
     result = _score(source, predictor, "CONV-14", end_ms - WINDOW_MS, end_ms, HistoryEvidence())

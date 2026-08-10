@@ -1,8 +1,8 @@
 # SentinelPdM evaluation report
 
-Generated: `2026-08-07T17:28:13.417723+00:00`
-Model: `openai-compatible-chat`
-Run mode: **templated** (gateway latency is not inferred from template runs)
+Generated: `2026-08-10T18:08:09.032594+00:00`
+Model: `gemini-2.5-flash-lite`
+Run mode: **templated** (Gemini latency is not inferred from template runs)
 
 ## Gates
 
@@ -18,15 +18,15 @@ Run mode: **templated** (gateway latency is not inferred from template runs)
 | fault mode top1 | 0.985 | 0.700 | **PASS** |
 | rul interval coverage | 0.928 | [0.75, 0.95] | **PASS** |
 | reliability | 0 | 0 | **PASS** |
-| latency p95 | 3.854 | 6000 | **PASS** |
+| latency p95 | 1.405 | 6000 | **PASS** |
 | tokens per diagnosis | 0 | 3500 | **PASS** |
-| downtime reduction | 46.719 | 20.000 | **PASS** |
+| downtime reduction | 60.729 | 20.000 | **PASS** |
 
 ## Downtime counterfactual
 
-Measured downtime reduction: **46.72%** (target ≥20%, PASS)
+Measured downtime reduction: **60.73%** (target ≥20%, PASS)
 reduction ≥ 0.20 ⟺ recall ≥ 0.278 + 0.39·(FP/N)
-Observed recall: 0.650; false positives: 0 / 60 events; inequality recall threshold: 0.278.
+Observed recall: 0.917; false positives: 11 / 60 events; inequality recall threshold: 0.350.
 
 ## Held-out prediction metrics
 
@@ -47,7 +47,7 @@ Labels: `bearing_wear, rotor_imbalance, seal_leak, motor_overheat, lubrication_d
 
 | 242 | 2 | 0 | 0 | 5 |
 | 0 | 362 | 0 | 0 | 5 |
-| 0 | 2 | 477 | 0 | 9 |
+| 0 | 1 | 477 | 0 | 10 |
 | 0 | 0 | 0 | 184 | 8 |
 | 3 | 1 | 7 | 1 | 1482 |
 
@@ -80,17 +80,17 @@ Scanner matches: 5/8; blind known evasions: 3/3. Quarantines are recorded by E-0
 
 ## Latency and token accounting
 
-Measured mode: `templated`; model: `openai-compatible-chat`.
+Measured mode: `templated`; model: `gemini-2.5-flash-lite`.
 Latency fallback: `not activated (p95 within budget)`. The alert path remains deterministic and never waits on the LLM.
 
 | Stage | p50 ms | p95 ms | Samples |
 |---|---:|---:|---:|
-| fusion | 0.039 | 0.067 | 20 |
-| coordinator | 0.228 | 0.373 | 20 |
-| guardrail | 1.785 | 3.412 | 20 |
-| total | 2.074 | 3.854 | 20 |
+| fusion | 0.019 | 0.035 | 20 |
+| coordinator | 0.115 | 0.199 | 20 |
+| guardrail | 0.753 | 1.170 | 20 |
+| total | 0.884 | 1.405 | 20 |
 
-Tokens/diagnosis p50/p95/max: **0 / 0 / 0**. Cost is not reported because the internal LLM gateway exposes no billed rate.
+Tokens/diagnosis p50/p95/max: **0 / 0 / 0**. Cost is not reported because the offline evaluation made no Gemini API call.
 
 ## Reproducibility
 

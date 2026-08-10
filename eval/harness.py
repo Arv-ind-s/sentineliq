@@ -6,10 +6,10 @@ contract against the adversarial scenario file, exercises the maintenance
 fallback under a deterministic flaky ERP, and writes one JSON source of truth
 plus a human-readable report.
 
-The LLM gateway is optional at evaluation time. When ``--live-gateway`` is
+The Gemini API is optional at evaluation time. When ``--live-gemini`` is
 requested and a key is configured, one real Coordinator call is timed. Without
 that explicit opt-in (or without a key), latency and token results are clearly
-stamped as templated/offline rather than presented as gateway measurements.
+stamped as templated/offline rather than presented as Gemini measurements.
 """
 
 from __future__ import annotations
@@ -72,7 +72,7 @@ class EvaluationConfig:
     report_path: Path = DEFAULT_REPORT
     json_path: Path = DEFAULT_JSON
     reliability_runs: int = DEFAULT_RELIABILITY_RUNS
-    live_gateway: bool = False
+    live_gemini: bool = False
 
     def __post_init__(self) -> None:
         if self.reliability_runs <= 0:
@@ -494,7 +494,7 @@ def _latency_metrics(config: EvaluationConfig) -> dict[str, Any]:
 
     mode = "templated"
     live_latency: float | None = None
-    if config.live_gateway and settings.llm.api_key:
+    if config.live_gemini and settings.llm.api_key:
         live_agent = CoordinatorAgent()
         started = time.perf_counter()
         live_result = live_agent.run(RunContext(payload=payload))
@@ -521,7 +521,7 @@ def _latency_metrics(config: EvaluationConfig) -> dict[str, Any]:
         "p95_ms": stages["total"]["p95_ms"],
         "fallback_actions": fallback_actions,
         "tokens_per_diagnosis": {"p50": 0, "p95": 0, "max": 0, "basis": "deterministic template; no LLM tokens consumed"},
-        "cost": {"reported": False, "basis": "LLM gateway is internal; no billed rate is exposed"},
+        "cost": {"reported": False, "basis": "offline evaluation; no Gemini API call was made"},
     }
 
 
@@ -676,9 +676,9 @@ def render_report(summary: Mapping[str, Any]) -> str:
     lines = [
         "# SentinelPdM evaluation report",
         "",
-        f"Generated: `{summary['generated_at']}`  ",
-        f"Model: `{summary['model']}`  ",
-        f"Run mode: **{summary['run_mode']}** (gateway latency is not inferred from template runs)",
+        f"Generated: `{summary['generated_at']}`",
+        f"Model: `{summary['model']}`",
+        f"Run mode: **{summary['run_mode']}** (Gemini latency is not inferred from template runs)",
         "",
         "## Gates",
         "",
@@ -758,7 +758,7 @@ def render_report(summary: Mapping[str, Any]) -> str:
     lines.extend(
         [
             "",
-            f"Tokens/diagnosis p50/p95/max: **{latency['tokens_per_diagnosis']['p50']} / {latency['tokens_per_diagnosis']['p95']} / {latency['tokens_per_diagnosis']['max']}**. Cost is not reported because the internal LLM gateway exposes no billed rate.",
+            f"Tokens/diagnosis p50/p95/max: **{latency['tokens_per_diagnosis']['p50']} / {latency['tokens_per_diagnosis']['p95']} / {latency['tokens_per_diagnosis']['max']}**. Cost is not reported because the offline evaluation made no Gemini API call.",
             "",
             "## Reproducibility",
             "",
@@ -785,9 +785,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
     parser.add_argument("--json", dest="json_path", type=Path, default=DEFAULT_JSON)
     parser.add_argument("--reliability-runs", type=int, default=DEFAULT_RELIABILITY_RUNS)
-    parser.add_argument("--live-gateway", action="store_true", help="time one real gateway call when LLM_API_KEY is configured")
+    parser.add_argument("--live-gemini", action="store_true", help="time one real Gemini call when GEMINI_API_KEY is configured")
     args = parser.parse_args(argv)
-    summary = evaluate(EvaluationConfig(data_root=args.data_root, artifact_dir=args.artifacts_dir, scenarios_path=args.scenarios, report_path=args.report, json_path=args.json_path, reliability_runs=args.reliability_runs, live_gateway=args.live_gateway))
+    summary = evaluate(EvaluationConfig(data_root=args.data_root, artifact_dir=args.artifacts_dir, scenarios_path=args.scenarios, report_path=args.report, json_path=args.json_path, reliability_runs=args.reliability_runs, live_gemini=args.live_gemini))
     write_outputs(summary, args.report, args.json_path)
     print(json.dumps({"report": str(args.report), "json": str(args.json_path), "run_mode": summary["run_mode"], "reliability": summary["reliability"], "hallucination": summary["hallucination"]["passed"]}, indent=2))
 

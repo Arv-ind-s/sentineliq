@@ -4,7 +4,7 @@
 
 SentinelPdM uses versioned scikit-learn artifacts to estimate machine failure risk, classify a fault mode, and estimate a remaining-useful-life (RUL) interval from a fixed 41-feature contract (`fv1`). The model is a decision-support component for the seeded predictive-maintenance demo; it is not a safety controller or an autonomous maintenance authority.
 
-The sklearn models produce every numerical prediction and KPI; `openai-compatible-chat` only narrates the already-computed evidence. The LLM is not part of the >=85% claim. If the gateway is unavailable or no key is configured, the numerical path is unchanged and the diagnosis uses the deterministic template.
+The sklearn models produce every numerical prediction and KPI; `gemini-2.5-flash-lite` only narrates the already-computed evidence. Gemini is not part of the >=85% claim. If the Gemini API is unavailable or no key is configured, the numerical path is unchanged and the diagnosis uses the deterministic template.
 
 ## Training and evaluation data
 
@@ -14,7 +14,7 @@ The model artifacts record the train/validation/test split and held-out machine 
 
 - `PUMP-07` — planted bearing-wear scenario used in the live alert moment.
 - `CNC-11` — seal-leak scenario with intentionally conflicting maintenance history.
-- `CONV-14` — gateway/data-integrity scenario where prediction is withheld when the signal cannot be trusted.
+- `CONV-14` — connectivity/data-integrity scenario where prediction is withheld when the signal cannot be trusted.
 
 The `sensor_drift` trap is deliberately included as a non-mechanical-failure condition. `PRESS-03` has sensor drift without a true failure; a good system should resist turning that trap into a mechanical diagnosis.
 
@@ -51,7 +51,7 @@ The evaluation deliberately keeps difficulty visible:
 - Held-out machines `PUMP-07`, `CNC-11`, and `CONV-14` test behaviour on machines not used as ordinary training examples.
 - The `sensor_drift` trap tests whether the system can decline a mechanical-fault explanation when a sensor condition is the better explanation.
 - `CNC-11` tests conflict handling between sensor evidence and a dominant but mismatched maintenance history.
-- `CONV-14` tests data-integrity refusal during an eight-hour gateway outage; the system withholds a prediction rather than guessing.
+- `CONV-14` tests data-integrity refusal during an eight-hour connectivity outage; the system withholds a prediction rather than guessing.
 - PUMP-07 tests an alert crossing at the seeded replay time and verifies the tuned threshold against the serving artifact.
 
 Known limitations include synthetic distributions, limited event counts per family, dependence on the 41-feature contract, possible novel operating regimes, sensor calibration changes, unseen fault modes, concept drift, and incomplete maintenance history. A high score on the generated split does not establish performance on a different plant or a safety-critical deployment. RUL is an interval estimate with model and data uncertainty; it is not a maintenance deadline.

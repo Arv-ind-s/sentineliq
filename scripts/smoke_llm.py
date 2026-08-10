@@ -1,4 +1,4 @@
-"""Run the B-03 gateway smoke test and write the H1.4 latency decision."""
+"""Run the B-03 Gemini smoke test and write the H1.4 latency decision."""
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def run_smoke(output_path: str | Path = ROOT / "eval" / "latency_baseline.json")
             "first_token_latency_ms": round(response.latency_ms, 3),
             "branch_taken": _branch(tokens_per_second),
         }
-        logging.info("LLM gateway reachable provider=%s output_tok_s=%.1f branch=%s", response.provider, tokens_per_second, result["branch_taken"])
+        logging.info("Gemini API reachable provider=%s output_tok_s=%.1f branch=%s", response.provider, tokens_per_second, result["branch_taken"])
     except BaseException as error:
         reason = failure_reason(error)
         result = {
@@ -64,7 +64,7 @@ def run_smoke(output_path: str | Path = ROOT / "eval" / "latency_baseline.json")
             "first_token_latency_ms": None,
             "branch_taken": "offline_template",
         }
-        logging.warning("LLM gateway unavailable reason=%s; continuing with deterministic templates", reason)
+        logging.warning("Gemini API unavailable reason=%s; continuing with deterministic templates", reason)
     finally:
         client.close()
     path = Path(output_path)

@@ -48,7 +48,7 @@ def test_diagnosis_payload_contains_grounded_citations_actions_and_fusion_terms(
 
 
 class _GeneratedDiagnosisClient:
-    provider = "test-gateway"
+    provider = "test-gemini"
 
     def chat(self, _messages: object, _model: object) -> LLMResponse:
         payload = {
@@ -98,7 +98,7 @@ def test_live_diagnosis_route_surfaces_the_generated_explanation(monkeypatch: py
     assert diagnosis["generated"] is True
     assert diagnosis["offline_mode"] is False
     assert diagnosis["model"] == "test-generated-model"
-    assert diagnosis["provider"] == "test-gateway"
+    assert diagnosis["provider"] == "test-gemini"
     assert diagnosis["fallback_reason"] is None
     assert diagnosis["explanation"].startswith("Bearing wear is the most likely fault")
     trace = client.get(f"/runs/{payload['trace_id']}")

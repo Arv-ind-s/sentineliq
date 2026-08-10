@@ -117,7 +117,7 @@ from core.predict import Predictor, load_predictor
 from core.db import create_schema, session_scope
 from core.models import Approval as ApprovalRow, Diagnosis as DiagnosisRow, Prediction as PredictionRow
 from core.rehearsal import MECHANICAL_MODES, build_rehearsal_point, failure_horizon, risk_delta
-from llm.tls import gateway_verify_setting
+from llm.tls import gemini_verify_setting
 from api.security import RequestBodyTooLarge, SECURITY_HEADERS, TokenBucketRateLimiter, body_limit_for_path, rate_limit_for_path, request_identity
 
 
@@ -624,7 +624,7 @@ def _llm_offline_state() -> LlmOfflineResponse:
     return LlmOfflineResponse(
         enabled=forced,
         effective_offline=effective,
-        mode="template" if effective else "gateway",
+        mode="template" if effective else "gemini",
         model=str(settings.llm.models.coordinator.name),
         provider=str(settings.llm.provider),
     )
@@ -823,7 +823,7 @@ async def _execute_diagnosis(
     fallback_prediction, context = _diagnosis_context(machine)
     context = RunContext(trace_id=trace_id, payload=context.payload)
     maintenance = MaintenanceLogAgent(
-        # The measured gateway latency exceeds the six-second budget. Keep
+        # The measured Gemini latency exceeds the six-second budget. Keep
         # history deterministic so the Coordinator retains one reflection
         # retry without exceeding two LLM calls per diagnosis.
         llm_api_key="",
@@ -1139,38 +1139,41 @@ async def _check_llm() -> tuple[str, float, str, str, bool, bool, str, str]:
     base_detail = f"provider={provider}, model={model_name}"
 
     if not settings.llm.api_key:
-        detail = f"{base_detail}; offline deterministic fallback active; gateway not probed"
+        detail = f"{base_detail}; offline deterministic fallback active; Gemini API not probed"
         if not tls_verified:
             detail += "; tls_verified=false"
         # Offline mode is an intentional, supported operating mode.  The
         # local fallback remains operational, but the remote LLM dependency
-        # is explicitly degraded so the health strip does not imply that a
-        # gateway is reachable when no key is configured.
+        # is explicitly degraded so the health strip does not imply that the
+        # Gemini API is reachable when no key is configured.
         return "degraded", _elapsed_ms(started), detail, _update_health_breaker("llm", False), False, tls_verified, model_name, provider
 
     try:
-        verify_setting = gateway_verify_setting(tls_verify=tls_verified, cert_file=settings.ssl_cert_file)
+        verify_setting = gemini_verify_setting(tls_verify=tls_verified, cert_file=settings.ssl_cert_file)
         async with httpx.AsyncClient(timeout=HEALTH_PROBE_TIMEOUT_S, verify=verify_setting) as client:
-            response = await client.get(f"{settings.llm.base_url.rstrip('/')}/models", headers={"Authorization": f"Bearer {settings.llm.api_key}"})
+            response = await client.get(
+                f"{settings.llm.base_url.rstrip('/')}/models",
+                headers={"x-goog-api-key": settings.llm.api_key},
+            )
         reachable = response.status_code < 500
         model_available = False
         if 200 <= response.status_code < 400:
             payload = response.json()
-            rows = payload.get("data", payload) if isinstance(payload, dict) else payload
+            rows = payload.get("models", payload) if isinstance(payload, dict) else payload
             if isinstance(rows, list):
                 model_ids = {
-                    str(item.get("id") or item.get("model_name") or item.get("name"))
+                    str(item.get("name") or item.get("id") or item.get("model_name")).removeprefix("models/")
                     for item in rows
-                    if isinstance(item, dict)
+                    if isinstance(item, dict) and "generateContent" in item.get("supportedGenerationMethods", ["generateContent"])
                 }
                 model_available = model_name in model_ids
         usable = 200 <= response.status_code < 400 and model_available and tls_verified
-        detail = f"{base_detail}; model catalog HTTP {response.status_code}; model {'available' if model_available else 'unavailable'}"
+        detail = f"{base_detail}; Gemini model catalog HTTP {response.status_code}; model {'available' if model_available else 'unavailable'}"
         if not tls_verified:
             detail += "; tls_verified=false"
         return ("up" if usable else "degraded", _elapsed_ms(started), detail, _update_health_breaker("llm", not reachable), reachable, tls_verified, model_name, provider)
     except (httpx.HTTPError, TimeoutError, OSError, ValueError) as exc:
-        detail = f"{base_detail}; gateway unreachable: {_exception_text(exc)}"
+        detail = f"{base_detail}; Gemini API unreachable: {_exception_text(exc)}"
         if not tls_verified:
             detail += "; tls_verified=false"
         return "degraded", _elapsed_ms(started), detail, _update_health_breaker("llm", True), False, tls_verified, model_name, provider

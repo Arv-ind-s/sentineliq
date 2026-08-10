@@ -162,7 +162,7 @@ def test_quarantine_release_is_audited_but_does_not_reenable_prompt_inclusion(tm
     ).output["evidence"] == []
 
 
-def test_redacted_erp_text_never_reaches_the_llm_gateway_fixture(tmp_path: Path) -> None:
+def test_redacted_erp_text_never_reaches_the_gemini_fixture(tmp_path: Path) -> None:
     raw_values = ("Alice Smith", "alice.smith@example.com", "EMP-2042", "+44 20 7946 0958")
     note = "Technician: Alice Smith; email alice.smith@example.com; EMP-2042; phone +44 20 7946 0958"
     llm = CapturingLLM()
@@ -172,9 +172,9 @@ def test_redacted_erp_text_never_reaches_the_llm_gateway_fixture(tmp_path: Path)
     )
 
     assert result.ok is True
-    gateway_payload = str(llm.messages)
-    assert all(value not in gateway_payload for value in raw_values)
-    assert "[REDACTED_NAME]" in gateway_payload
-    assert "[REDACTED_EMAIL]" in gateway_payload
-    assert "[REDACTED_EMPLOYEE_ID]" in gateway_payload
-    assert "[REDACTED_PHONE]" in gateway_payload
+    gemini_payload = str(llm.messages)
+    assert all(value not in gemini_payload for value in raw_values)
+    assert "[REDACTED_NAME]" in gemini_payload
+    assert "[REDACTED_EMAIL]" in gemini_payload
+    assert "[REDACTED_EMPLOYEE_ID]" in gemini_payload
+    assert "[REDACTED_PHONE]" in gemini_payload

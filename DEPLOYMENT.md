@@ -1,6 +1,6 @@
 # SentinelPdM deployment guide
 
-SentinelPdM is designed for a local, Docker-free demonstration on a developer laptop. It uses a Python virtual environment, SQLite, local Parquet/DuckDB data, two loopback Uvicorn processes, and an optional HTTPS call to the OpenAI-compatible LLM gateway. No administrator privileges, system service, container runtime, or database server is required.
+SentinelPdM is designed for a local, Docker-free demonstration on a developer laptop. It uses a Python virtual environment, SQLite, local Parquet/DuckDB data, two loopback Uvicorn processes, and an optional HTTPS call to the Gemini Developer API. No administrator privileges, system service, container runtime, or database server is required.
 
 ## Install and start
 
@@ -30,72 +30,80 @@ Secrets belong in `.env` or the process environment. They must not be added to `
 
 | Setting | Current/default value | Purpose |
 |---|---|---|
-| `LLM_BASE_URL` | `https://llm-gateway.example.com` | OpenAI-compatible narrative gateway base URL. |
-| `LLM_API_KEY` | empty by default | Optional gateway credential; empty means deterministic offline mode. |
+| `GEMINI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta` | Gemini Developer API base URL. |
+| `GEMINI_API_KEY` | empty by default | Optional Google AI Studio API key; empty means deterministic offline mode. |
 | `ERP_BASE_URL` | `http://127.0.0.1:8001` | Mock or compatible ERP endpoint. |
 | `ERP_API_KEY` | `dev-erp-key` in the local example | Mock ERP bearer credential; replace for a real integration. |
 | `JWT_SECRET` | `change-me-for-local-development` in the example | Signs local session cookies; set a random secret outside a throwaway demo. |
 | `DB_URL` | `sqlite:///data/plant.db` | Application database. A Postgres adapter can be introduced behind the existing database seam. |
 | `SSL_CERT_FILE` | unset | Optional approved private CA bundle used by the HTTPS client. |
-| `llm.provider` | `langchain` | Selects the default `langchain_openai` adapter; `httpx` is also supported. |
-| `llm.tls_verify` | `true` | Controls TLS verification for the LLM gateway only. |
-| `llm.models.coordinator.name` | `openai-compatible-chat` | Gateway-listed coordinator model, live-smoke-tested with this key. |
-| `llm.models.log_summary.name` | `openai-compatible-chat` | Gateway-listed maintenance-log summarizer model. |
-| `llm.models.embeddings.enabled` | `false` | Retrieval uses the local TF-IDF `VectorStore`; no gateway embedding model is required. |
-| `llm.timeout_s` / `max_retries` | `20` / `1` | Gateway request budget and retry count. |
+| `llm.provider` | `gemini` | Uses the native Gemini `generateContent` REST API through `httpx`. |
+| `llm.tls_verify` | `true` | Controls TLS verification for Gemini API calls only. |
+| `llm.models.coordinator.name` | `gemini-2.5-flash-lite` | Stable Gemini model with free-tier input and output. |
+| `llm.models.log_summary.name` | `gemini-2.5-flash-lite` | Gemini model used for optional maintenance-log summaries. |
+| `llm.models.embeddings.enabled` | `false` | Retrieval uses the local TF-IDF `VectorStore`; no remote embedding model is required. |
+| `llm.timeout_s` / `max_retries` | `20` / `1` | Gemini request budget and retry count. |
 | `llm.circuit_breaker.failure_threshold` / `cooldown_s` | `4` / `60` | Opens the breaker after repeated failures and permits a later probe. |
 | `llm.cache.ttl_s` | `900` | Diagnosis/narrative cache lifetime. |
 | `stream.speed` / `replay_day` | `600` / `56` | Deterministic replay speed and seeded day. |
 
 The complete validated schema and thresholds are in `config.yaml`. The tuned prediction threshold is an artifact value in `models/MANIFEST.json`, not a configuration magic number.
 
-## OpenAI-compatible LLM gateway
+## Gemini Developer API
 
-Sentinel can use any OpenAI-compatible chat endpoint. Obtain the base URL, model identifier, and a project-scoped API key from the provider selected for the deployment; do not paste the key into an issue, source file, terminal transcript, or documentation. Store it only as `LLM_API_KEY` in `.env` or an equivalent secret store.
+Create an API key in [Google AI Studio](https://aistudio.google.com/app/apikey). Do not paste the key
+into an issue, source file, terminal transcript, or documentation. Store it only as `GEMINI_API_KEY`
+in `.env` or an equivalent secret store.
 
-Set the gateway explicitly as follows:
+Google's [Gemini API pricing page](https://ai.google.dev/gemini-api/docs/pricing) states that free-tier
+request content may be used to improve its products. Keep this setting
+on synthetic/demo data unless your organization's data policy and Google terms allow the submitted
+content; redaction is a defense in depth, not permission to send sensitive plant records.
+
+Set the key as follows; the checked-in base URL already points directly to Google's API:
 
 ```dotenv
-LLM_BASE_URL=https://llm-gateway.example.com
-LLM_API_KEY=<project-scoped-key>
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+GEMINI_API_KEY=<your-google-ai-studio-key>
 ```
 
-The example model identifier is:
+The default model is:
 
 ```text
-openai-compatible-chat
+gemini-2.5-flash-lite
 ```
 
-The `llm.provider` choice is a config value, not an agent dependency:
+The client posts directly to `models/{model}:generateContent` with the `x-goog-api-key` header. It
+does not require LiteLLM, an OpenAI-compatible proxy, LangChain, or an OpenAI SDK. Test the configured
+key without starting the application:
+
+```bash
+python scripts/smoke_llm.py
+```
+
+To use another Gemini text model, change the relevant model entry in `config.yaml`:
 
 ```yaml
-llm:
-  provider: langchain   # or: httpx
+name: <gemini-model-id>
 ```
 
-To swap to another model exposed by the gateway, change one line in the relevant model entry in `config.yaml` (or the environment/config overlay used by the deployment):
-
-```yaml
-name: <gateway-listed-model>
-```
-
-Do not hunt for an embeddings model for this build. Retrieval is intentionally local TF-IDF and works without a gateway.
+Retrieval is intentionally local TF-IDF and works without a Gemini embedding model.
 
 ### TLS escalation ladder
 
-The actual demo configuration uses the first rung: `config.yaml` has `llm.tls_verify: true`. The F-01 evaluation was offline/template-backed, so this confirms the configured TLS posture rather than claiming that a live gateway call was exercised during that run.
+The demo configuration uses the first rung: `config.yaml` has `llm.tls_verify: true`. An offline/template-backed evaluation confirms the configured TLS posture but does not claim that a live Gemini call was exercised.
 
 Use this escalation ladder when a managed HTTPS proxy is present:
 
-1. Keep `llm.tls_verify: true`. The gateway client uses the operating system trust store, including approved private roots installed for the current user or machine.
+1. Keep `llm.tls_verify: true`. The Gemini client uses the operating system trust store, including approved private roots installed for the current user or machine.
 2. If a required private root is not in the operating system trust store, set `SSL_CERT_FILE` to the approved CA bundle and keep verification enabled.
-3. Only when the gateway owner explicitly requires it for a controlled local demonstration, set `llm.tls_verify: false`. This setting is scoped to the LLM gateway client only, is WARN-logged at startup, and is displayed in health/Trust diagnostics. ERP and other clients retain hard-coded certificate verification.
+3. Only for a controlled local demonstration behind an explicitly approved TLS-inspection proxy, set `llm.tls_verify: false`. This setting is scoped to the Gemini client only, is WARN-logged at startup, and is displayed in health/Trust diagnostics. ERP and other clients retain hard-coded certificate verification.
 
-The final rung creates residual man-in-the-middle risk. It is bounded for this demo because the gateway receives redacted, evidence-only prompts, has no ERP write tool, and the Guardrail Agent rejects unsupported or unsafe output. It is not an acceptable default for a general production deployment; prefer the approved CA bundle.
+The final rung creates residual man-in-the-middle risk. It is bounded for this demo because Gemini receives redacted, evidence-only prompts, has no ERP write tool, and the Guardrail Agent rejects unsupported or unsafe output. It is not an acceptable default for a general production deployment; prefer the approved CA bundle.
 
 ## No-key and offline operation
 
-For an air-gapped rehearsal, leave `LLM_API_KEY` empty or use the Trust screen's offline toggle. Sensor processing, feature extraction, model predictions, risk fusion, retrieval, ledger values, citations, audit, approvals, and ERP integration do not require the LLM. Narrative calls fail closed to the deterministic template, which is stamped `deterministic-template` and shown with the amber Offline diagnosis mode banner. The LLM is not used to invent a number or authorize a work order.
+For an air-gapped rehearsal, leave `GEMINI_API_KEY` empty or use the Trust screen's offline toggle. Sensor processing, feature extraction, model predictions, risk fusion, retrieval, ledger values, citations, audit, approvals, and ERP integration do not require Gemini. Narrative calls fail closed to the deterministic template, which is stamped `deterministic-template` and shown with the amber Offline diagnosis mode banner. Gemini is not used to invent a number or authorize a work order.
 
 ## Backup, reseed, and rollback
 

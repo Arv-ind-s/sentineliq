@@ -5,7 +5,7 @@
 SentinelIQ is an offline-first predictive-maintenance and fault-diagnosis platform for a simulated
 15-machine plant. It replays deterministic telemetry, cleans and featurises sensor streams, serves
 scikit-learn predictions, retrieves maintenance evidence, and presents grounded diagnoses with citations.
-An optional OpenAI-compatible LLM can improve the narrative, while every numerical prediction,
+An optional Gemini model can improve the narrative, while every numerical prediction,
 guardrail, approval decision, and ERP authorization remains deterministic and auditable.
 
 SentinelIQ is a decision-support demonstration, not a safety controller. Maintenance actions require the
@@ -71,8 +71,10 @@ npm run dev -- --host 127.0.0.1
 
 The API's generated OpenAPI documentation is at [`http://127.0.0.1:8000/docs`](http://127.0.0.1:8000/docs). The UI is normally at `http://127.0.0.1:5173`.
 
-The `LLM_API_KEY` in `.env` is optional. Leave it empty for the deterministic offline-template path.
-Never commit `.env` or place a gateway key in `config.yaml`.
+The `GEMINI_API_KEY` in `.env` is optional. Create a free key in
+[Google AI Studio](https://aistudio.google.com/app/apikey) and paste it after `GEMINI_API_KEY=`. Leave
+it empty for the deterministic offline-template path. Never commit `.env` or place the key in
+`config.yaml`.
 
 ## Core capabilities
 
@@ -103,7 +105,10 @@ maintenance ERP -> redaction -> TF-IDF retrieval -> evidence bundle
 
 The Python API is the single browser-facing origin and owns authentication, orchestration, persistence, replay, audit, and health reporting. SQLite stores application state, DuckDB reads the local Parquet time series, and the mock ERP is an independent loopback FastAPI process. The agent workflow is explicit rather than framework-dependent: sensor and maintenance evidence are collected, deterministic fusion is authoritative, the coordinator narrates only supplied evidence, guardrails validate the response, and only the ERP action agent can write a work order after approval.
 
-Numerical predictions never depend on the LLM. The default provider is the configured `langchain` adapter for the LLM gateway, with `httpx` retained as a selectable adapter; when the key is absent, the network is unavailable, or the circuit breaker is open, the deterministic template is used.
+Numerical predictions never depend on the LLM. Narration uses a direct `httpx` call to the native
+Gemini Developer API with the free-tier `gemini-2.5-flash-lite` model; no LiteLLM, OpenAI, or LangChain
+adapter is involved. When the key is absent, the network is unavailable, or the circuit breaker is
+open, the deterministic template is used.
 
 ## Five-minute demo
 
@@ -144,11 +149,11 @@ npm run lint
 npm run build
 ```
 
-The test suite includes the balanced-accuracy and downtime KPI gates, demo-integrity checks, security checks, and agent/API tests. The evaluation script regenerates `eval/REPORT.md` and `eval/report.json` from the current artifacts. The current run is intentionally reported in tokens rather than a fabricated currency cost because the internal gateway does not publish a rate.
+The test suite includes the balanced-accuracy and downtime KPI gates, demo-integrity checks, security checks, and agent/API tests. The evaluation script regenerates `eval/REPORT.md` and `eval/report.json` from the current artifacts. The current run reports token usage; free-tier limits and availability are controlled by Google.
 
 ## Documentation
 
-- [`DEPLOYMENT.md`](DEPLOYMENT.md): installation, configuration, LLM gateway/TLS posture, offline operation, backup, retention, and capacity.
+- [`DEPLOYMENT.md`](DEPLOYMENT.md): installation, Gemini configuration/TLS posture, offline operation, backup, retention, and capacity.
 - [`USER_GUIDE.md`](USER_GUIDE.md): operator, technician, and planner workflows, diagnosis interpretation, confidence, escalation, and limitations.
 - [`docs/AGENTS.md`](docs/AGENTS.md): agent roles, handoffs, prompts, tools, and escalation boundaries.
 - [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md): data, model metrics, difficulty controls, known failures, fairness notes, and intended use.

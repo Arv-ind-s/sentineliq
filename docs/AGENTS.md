@@ -55,7 +55,7 @@ The system routes conservatively when:
 - sensor data is missing, stale, invalid, frozen, duplicated, or marked `sensor_drift`;
 - the sensor and maintenance bundles conflict;
 - the coordinator output is not valid JSON, lacks citations, contains unsupported numbers, or violates the safety denylist;
-- the LLM gateway is unavailable, the circuit breaker is open, or TLS is not trusted;
+- the Gemini API is unavailable, the circuit breaker is open, or TLS is not trusted;
 - the autonomy policy requires human review or an ERP write is not explicitly approved.
 
 The normal degraded path is a deterministic template with an offline/degraded stamp and visible limits. One reflection retry is bounded; repeated failure routes to escalation rather than allowing an ungrounded narrative through.

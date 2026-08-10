@@ -37,7 +37,7 @@ def test_search_is_deterministic_capped_and_returns_stable_citations() -> None:
 
 
 def test_retrieval_is_warm_under_five_milliseconds_and_offline(monkeypatch) -> None:
-    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     retriever = MaintenanceLogRetriever(ERP_DB)
     retriever.search("bearing vibration", machine_id="PUMP-07")
 

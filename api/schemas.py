@@ -517,7 +517,7 @@ class LlmOfflineToggleRequest(ContractModel):
 class LlmOfflineResponse(ContractModel):
     enabled: bool
     effective_offline: bool
-    mode: Literal["template", "gateway"]
+    mode: Literal["template", "gemini"]
     model: str
     provider: str
 
