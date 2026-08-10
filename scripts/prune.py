@@ -22,14 +22,15 @@ from sqlalchemy import delete, func, select
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from core.config import ROOT, settings
+from core.config import settings
 from core.db import create_schema, session_scope
 from core.models import AgentRun, AuditLedger
+from core.runtime_paths import runtime_paths
 
 
 RETENTION_DAYS = 30
 SECONDS_PER_DAY = 24 * 60 * 60
-DEFAULT_CACHE_PATH = ROOT / "data" / "llm_cache.db"
+DEFAULT_CACHE_PATH = runtime_paths.llm_cache_path
 
 
 def _count_cache_rows(connection: sqlite3.Connection, table: str, cutoff_s: float) -> int:

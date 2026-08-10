@@ -33,6 +33,11 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.runtime_paths import runtime_paths
+
 PUMP_CROSSING_RE = re.compile(r"PUMP-07 fused risk crossed tau=([0-9.]+) at ([0-9.]+)s")
 MOMENT_ONE_BUDGET_S = 30.0
 MOMENT_TWO_BUDGET_S = 20.0
@@ -143,7 +148,7 @@ class DemoAPI:
         if len(dependencies) != 6:
             raise RehearsalError(f"expected 6 health dependencies, got {len(dependencies)}")
 
-        notes = (ROOT / "data" / "DEMO_NOTES.md").read_text(encoding="utf-8")
+        notes = (runtime_paths.data_root / "DEMO_NOTES.md").read_text(encoding="utf-8")
         match = PUMP_CROSSING_RE.search(notes)
         if match is None:
             raise RehearsalError("data/DEMO_NOTES.md has no measured PUMP-07 crossing")

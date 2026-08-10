@@ -32,8 +32,11 @@ def test_trust_screen_renders_live_sources_and_acceptance_markers() -> None:
 
 def test_offline_control_is_available_through_the_same_origin_dev_proxy() -> None:
     vite_source = (ROOT / "ui" / "vite.config.ts").read_text(encoding="utf-8")
+    api_source = (ROOT / "ui" / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
 
-    assert '"/llm"' in vite_source
+    assert 'proxy: { "/api": apiProxy }' in vite_source
+    assert 'path.replace(/^\\/api/, "")' in vite_source
+    assert "fetch(apiPath(path)" in api_source
 
 
 def test_eval_report_exposes_the_eight_planted_injection_notes() -> None:

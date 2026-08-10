@@ -49,13 +49,13 @@ except ModuleNotFoundError:  # pragma: no cover - exercised only in minimal inst
 
     structlog = _FallbackStructlog()
 
-from core.config import ROOT
 from core.db import create_schema, session_scope
 from core.models import AgentRun
+from core.runtime_paths import runtime_paths
 
 
 logger = logging.getLogger(__name__)
-DEFAULT_LOG_PATH = ROOT / "logs" / "app.jsonl"
+DEFAULT_LOG_PATH = runtime_paths.agent_log_path
 _TRACE_LOG_LOCK = Lock()
 
 

@@ -27,6 +27,7 @@ from core.config import settings
 from core.quarantine import record_quarantine
 from core.redaction import injection_scan, redact, wrap_untrusted_document
 from core.retrieval import MaintenanceLogRetriever, RetrievedWorkOrder, WorkOrderRecord
+from core.runtime_paths import runtime_paths
 from llm.client import _call_json, create_client
 
 
@@ -397,7 +398,7 @@ class MaintenanceLogAgent:
             api_key=settings.erp.api_key or _DEFAULT_ERP_API_KEY,
             timeout_s=settings.erp.timeout_s,
         )
-        self.retriever = retriever or MaintenanceLogRetriever(database_path or Path(__file__).resolve().parents[1] / "erp" / "erp.db")
+        self.retriever = retriever or MaintenanceLogRetriever(database_path or runtime_paths.erp_db)
         self.llm_api_key = (
             ("injected-client" if llm_client is not None else settings.llm.api_key)
             if llm_api_key is None

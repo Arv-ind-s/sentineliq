@@ -1,0 +1,122 @@
+name: sentineliq
+
+x-python-image: &python-image
+  image: sentineliq-python:local
+
+x-runtime-hardening: &runtime-hardening
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=1g
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  init:
+    <<: [*python-image, *runtime-hardening]
+    user: "0:0"
+    command: ["python", "-m", "scripts.container_init"]
+    environment:
+      SENTINEL_STATE_ROOT: /state
+      SENTINEL_RUNTIME_UID: "10001"
+      SENTINEL_RUNTIME_GID: "10001"
+      DB_URL: sqlite:////state/data/plant.db
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+    volumes:
+      - sentinel_state:/state
+    restart: "no"
+
+  erp:
+    <<: [*python-image, *runtime-hardening]
+    user: "10001:10001"
+    command: ["python", "-m", "uvicorn", "erp.app:app", "--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      SENTINEL_STATE_ROOT: /state
+      ERP_DB_PATH: /state/erp/erp.db
+      ERP_API_KEY: ${ERP_API_KEY:-dev-erp-key}
+    expose:
+      - "8001"
+    volumes:
+      - sentinel_state:/state
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "scripts.container_health", "erp"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  api:
+    <<: [*python-image, *runtime-hardening]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: "10001:10001"
+    command:
+      - python
+      - -m
+      - uvicorn
+      - api.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --root-path
+      - /api
+      - --proxy-headers
+      - --forwarded-allow-ips=*
+    environment:
+      SENTINEL_STATE_ROOT: /state
+      DB_URL: sqlite:////state/data/plant.db
+      ERP_DB_PATH: /state/erp/erp.db
+      ERP_BASE_URL: http://erp:8001
+      ERP_API_KEY: ${ERP_API_KEY:-dev-erp-key}
+      JWT_SECRET: ${JWT_SECRET:-sentineliq-local-demo-change-me}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    expose:
+      - "8000"
+    volumes:
+      - sentinel_state:/state
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      erp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "scripts.container_health", "api"]
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
+  web:
+    <<: *runtime-hardening
+    image: sentineliq-web:local
+    build:
+      context: ui
+      dockerfile: Dockerfile
+    user: "101:101"
+    ports:
+      - "${SENTINEL_BIND_HOST:-127.0.0.1}:${SENTINEL_HTTP_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  sentinel_state:
+    name: sentineliq_state

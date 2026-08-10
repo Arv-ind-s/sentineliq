@@ -30,9 +30,10 @@ from sqlalchemy import select
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from core.config import ROOT, settings
+from core.config import settings
 from core.db import create_schema, get_engine, session_scope
 from core.models import FaultEvent, Machine
+from core.runtime_paths import runtime_paths
 
 
 CHANNELS = (
@@ -395,7 +396,7 @@ def _populate_database(database_url: str, machines: list[dict[str, Any]], events
 
 def generate(output_root: str | Path | None = None, seed: int | None = None) -> GenerationReport:
     """Generate the complete A-03 dataset and return its persisted inventory."""
-    root = Path(output_root) if output_root is not None else ROOT / "data"
+    root = Path(output_root) if output_root is not None else runtime_paths.data_root
     root = root.resolve()
     sensor_root = root / "sensors"
     database_path = root / "plant.db"
@@ -474,7 +475,7 @@ def _read_machine(sensor_root: Path, machine_id: str) -> Any:
 
 def verify_signal(output_root: str | Path | None = None) -> None:
     """Verify persisted A-03 facts without loading a model or model threshold."""
-    root = Path(output_root) if output_root is not None else ROOT / "data"
+    root = Path(output_root) if output_root is not None else runtime_paths.data_root
     sensor_root = root / "sensors"
     metadata_path = root / "metadata.json"
     database_url = f"sqlite:///{(root / 'plant.db').resolve()}"
@@ -557,7 +558,7 @@ def verify_signal(output_root: str | Path | None = None) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-root", type=Path, default=ROOT / "data")
+    parser.add_argument("--output-root", type=Path, default=runtime_paths.data_root)
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args()
     if args.verify_only:

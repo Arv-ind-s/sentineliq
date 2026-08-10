@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 from core.db import create_schema, session_scope
 from core.models import Machine, WorkOrder
+from core.runtime_paths import runtime_paths
 from erp.db import Database
 from erp.history import HISTORY_SIZE, generate_work_orders, injection_fixture_payload
 
@@ -64,12 +65,12 @@ def seed_erp_history(
     """Idempotently seed ERP storage, the core mirror, and E-04 metadata."""
 
     rows = generate_work_orders()
-    erp_path = Path(erp_database_path) if erp_database_path is not None else ROOT / "erp" / "erp.db"
+    erp_path = Path(erp_database_path) if erp_database_path is not None else runtime_paths.erp_db
     erp_database = Database(erp_path.resolve())
     erp_database.replace_with_generated_history()
-    core_url = core_database_url or f"sqlite:///{(ROOT / 'data' / 'plant.db').resolve()}"
+    core_url = core_database_url or f"sqlite:///{runtime_paths.plant_db}"
     mirror_core_history(rows, core_url)
-    output_fixture = Path(fixture_path) if fixture_path is not None else ROOT / "data" / "erp_injection_fixtures.json"
+    output_fixture = Path(fixture_path) if fixture_path is not None else runtime_paths.data_root / "erp_injection_fixtures.json"
     output_fixture.parent.mkdir(parents=True, exist_ok=True)
     output_fixture.write_text(json.dumps(injection_fixture_payload(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return erp_database.count_workorders()

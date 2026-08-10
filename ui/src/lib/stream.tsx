@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { apiPath } from "./api";
 import { LiveStreamContext, type StreamConnectionState } from "./stream-context";
 
 type StreamPayload = Record<string, unknown>;
@@ -26,7 +27,8 @@ function rememberTelemetry(queryClient: ReturnType<typeof useQueryClient>, paylo
 }
 
 function streamUrl(lastEventId: string | null) {
-  return lastEventId ? `/stream/events?last_event_id=${encodeURIComponent(lastEventId)}` : "/stream/events";
+  const path = lastEventId ? `/stream/events?last_event_id=${encodeURIComponent(lastEventId)}` : "/stream/events";
+  return apiPath(path);
 }
 
 export function LiveStreamProvider({ children }: { children: ReactNode }) {

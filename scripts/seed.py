@@ -25,7 +25,8 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from api.auth import seed_users
-from core.config import ROOT, settings
+from core.config import ROOT
+from core.runtime_paths import runtime_paths
 from core.retrieval import DEFAULT_INDEX_PATH, MaintenanceLogRetriever
 from data.generate import generate, verify_signal
 from scripts.seed_erp_history import seed_erp_history
@@ -79,13 +80,14 @@ def _is_stale(data_root: Path, artifact_root: Path, erp_path: Path, index_path: 
     return bool(existing_sources and max(path.stat().st_mtime for path in existing_sources) > oldest_output)
 
 
-def _run_demo_integrity(data_root: Path, artifact_root: Path) -> None:
+def _run_demo_integrity(data_root: Path, artifact_root: Path, erp_path: Path) -> None:
     if not DEMO_TEST.is_file():
         raise FileNotFoundError(f"post-training demo-integrity test is missing: {DEMO_TEST}")
 
     environment = os.environ.copy()
     environment["SENTINEL_DATA_ROOT"] = str(data_root.resolve())
     environment["SENTINEL_MODEL_ROOT"] = str(artifact_root.resolve())
+    environment["SENTINEL_ERP_ROOT"] = str(erp_path.resolve())
     environment["PYTHONUNBUFFERED"] = "1"
     completed = subprocess.run(
         [sys.executable, "-m", "pytest", str(DEMO_TEST), "-q"],
@@ -99,9 +101,9 @@ def _run_demo_integrity(data_root: Path, artifact_root: Path) -> None:
 
 def seed(
     *,
-    data_root: str | Path = ROOT / "data",
-    artifact_root: str | Path = ROOT / settings.predict.artifacts_dir,
-    erp_path: str | Path = ROOT / "erp" / "erp.db",
+    data_root: str | Path = runtime_paths.data_root,
+    artifact_root: str | Path = runtime_paths.model_root,
+    erp_path: str | Path = runtime_paths.erp_db,
     index_path: str | Path = DEFAULT_INDEX_PATH,
     if_stale: bool = False,
     verify_only: bool = False,
@@ -119,13 +121,13 @@ def seed(
         if missing:
             raise FileNotFoundError(f"cannot verify an incomplete seed; missing: {', '.join(missing)}")
         verify_signal(data_path)
-        _run_demo_integrity(data_path, model_path)
+        _run_demo_integrity(data_path, model_path, erp_database)
         return SeedResult(False, False, retrieval_index, False)
 
     if if_stale and not stale:
         print("Seed outputs are current; running verification only.")
         verify_signal(data_path)
-        _run_demo_integrity(data_path, model_path)
+        _run_demo_integrity(data_path, model_path, erp_database)
         return SeedResult(False, False, retrieval_index, False)
 
     print(f"Generating deterministic plant data under {data_path}...")
@@ -149,10 +151,10 @@ def seed(
     seed_users(core_database_url)
 
     print("Backfilling time-indexed ledger predictions and the real demo approval...")
-    backfill(core_database_url, data_path)
+    backfill(core_database_url, data_path, model_path)
     seed_demo_approval(core_database_url)
 
-    _run_demo_integrity(data_path, model_path)
+    _run_demo_integrity(data_path, model_path, erp_database)
     return SeedResult(True, True, retrieval_index, True)
 
 

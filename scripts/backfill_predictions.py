@@ -15,10 +15,11 @@ if __package__ in {None, ""}:
 from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-from core.config import ROOT, settings
+from core.config import settings
 from core.db import create_schema, session_scope
 from core.models import Approval, Machine, Prediction
 from core.predict import load_predictor
+from core.runtime_paths import runtime_paths
 from scripts import train
 
 
@@ -27,13 +28,17 @@ def _prediction_id(machine_id: str, window_end: int, model_version: str) -> str:
     return f"pred-{machine_id.lower()}-{window_end}-{digest}"
 
 
-def backfill(database_url: str, data_root: Path = ROOT / "data") -> dict[str, object]:
+def backfill(
+    database_url: str,
+    data_root: Path = runtime_paths.data_root,
+    artifact_root: str | Path | None = None,
+) -> dict[str, object]:
     """Score telemetry windows only; fault-event labels never enter this path."""
 
     create_schema(database_url)
     frame = train._load_sensor_frame(data_root)
     windows = train._build_windows(frame, [])
-    predictor = load_predictor()
+    predictor = load_predictor(artifact_root)
     batch_predictor = getattr(predictor, "primary", predictor)
     with session_scope(database_url) as session:
         machine_meta = {
@@ -164,7 +169,7 @@ def seed_demo_approval(database_url: str) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database-url", default=settings.db_url)
-    parser.add_argument("--data-root", type=Path, default=ROOT / "data")
+    parser.add_argument("--data-root", type=Path, default=runtime_paths.data_root)
     args = parser.parse_args()
     report = backfill(args.database_url, args.data_root)
     report["demo_approval"] = seed_demo_approval(args.database_url)

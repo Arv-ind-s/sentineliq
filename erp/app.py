@@ -15,11 +15,12 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Res
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.runtime_paths import runtime_paths
 from erp.db import Database, database_for_path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DB_PATH = ROOT / "erp" / "erp.db"
+DEFAULT_DB_PATH = runtime_paths.erp_db
 DEFAULT_API_KEY = "dev-erp-key"
 ERP_SCOPES = frozenset({"workorder:read", "workorder:write"})
 FAULT_MODES = frozenset({"none", "slow", "flaky", "down"})

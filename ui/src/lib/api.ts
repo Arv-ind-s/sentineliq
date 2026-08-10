@@ -10,8 +10,13 @@ export class ApiError extends Error {
   }
 }
 
+export function apiPath(path: string): string {
+  if (path === "/api" || path.startsWith("/api/")) return path;
+  return path.startsWith("/") ? `/api${path}` : `/api/${path}`;
+}
+
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(apiPath(path), {
     ...init,
     headers: { Accept: "application/json", ...init?.headers },
     credentials: init?.credentials ?? "same-origin",

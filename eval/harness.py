@@ -53,6 +53,7 @@ from core.db import dispose_engine
 from core.downtime_sim import simulate_downtime
 from core.fusion import HistoryEvidence, MachineContext, SensorEvidence, fuse
 from core.redaction import injection_scan
+from core.runtime_paths import runtime_paths
 from data.generate import FAILURE_MODES
 from erp.history import INJECTION_FIXTURES, _injection_note
 from scripts import train
@@ -66,8 +67,8 @@ DEFAULT_RELIABILITY_RUNS = 200
 
 @dataclass(frozen=True)
 class EvaluationConfig:
-    data_root: Path = ROOT / "data"
-    artifact_dir: Path = ROOT / "models"
+    data_root: Path = runtime_paths.data_root
+    artifact_dir: Path = runtime_paths.model_root
     scenarios_path: Path = DEFAULT_SCENARIOS
     report_path: Path = DEFAULT_REPORT
     json_path: Path = DEFAULT_JSON
@@ -430,7 +431,7 @@ def _reliability_metrics(config: EvaluationConfig) -> dict[str, Any]:
         database_url = f"sqlite:///{(Path(directory) / 'runs.db').resolve().as_posix()}"
         maintenance = MaintenanceLogAgent(
             erp_client=_FlakyERP(seed=42),
-            database_path=ROOT / "erp" / "erp.db",
+            database_path=runtime_paths.erp_db,
             llm_api_key="",
             database_url=database_url,
             retry_delays_s=(0, 0, 0),
@@ -779,8 +780,8 @@ def write_outputs(summary: Mapping[str, Any], report_path: str | Path = DEFAULT_
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-root", type=Path, default=ROOT / "data")
-    parser.add_argument("--artifacts-dir", type=Path, default=ROOT / "models")
+    parser.add_argument("--data-root", type=Path, default=runtime_paths.data_root)
+    parser.add_argument("--artifacts-dir", type=Path, default=runtime_paths.model_root)
     parser.add_argument("--scenarios", type=Path, default=DEFAULT_SCENARIOS)
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
     parser.add_argument("--json", dest="json_path", type=Path, default=DEFAULT_JSON)

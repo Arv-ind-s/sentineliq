@@ -25,6 +25,7 @@ import pyarrow.compute as pc
 
 from core.config import ROOT, settings
 from core.preprocess import CHANNELS
+from core.runtime_paths import runtime_paths
 
 
 BASE_TS_MS = int(datetime(2025, 1, 1, tzinfo=UTC).timestamp() * 1000)
@@ -375,7 +376,7 @@ def delete_simulated_alerts(database_url: str | None = None) -> int:
 def read_parquet_points(machine_id: str, start_ms: int, end_ms: int, sensor_root: str | Path | None = None) -> list[ValidatedPoint]:
     """Read a bounded real sensor window without applying replay delays."""
 
-    root = Path(sensor_root or ROOT / "data" / "sensors")
+    root = Path(sensor_root or runtime_paths.sensor_root)
     if not root.exists():
         return []
     dataset = ds.dataset(root, format="parquet", partitioning="hive")
@@ -405,7 +406,7 @@ def latest_complete_timestamp(
     """Return the newest timestamp containing the complete feature contract."""
 
     latest: int | None = None
-    root = Path(sensor_root or ROOT / "data" / "sensors")
+    root = Path(sensor_root or runtime_paths.sensor_root)
     if root.exists():
         dataset = ds.dataset(root, format="parquet", partitioning="hive")
         table = dataset.to_table(
@@ -539,7 +540,7 @@ class ParquetReplaySource:
 
     def __init__(self, machine_id: str, sensor_root: str | Path | None = None, *, start_ts_ms: int | None = None, max_points: int | None = None) -> None:
         self.machine_id = machine_id
-        self.sensor_root = Path(sensor_root or ROOT / "data" / "sensors")
+        self.sensor_root = Path(sensor_root or runtime_paths.sensor_root)
         self.start_ts_ms = start_ts_ms
         self.max_points = max_points
 

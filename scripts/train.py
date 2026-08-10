@@ -51,9 +51,10 @@ if __name__ == "__main__":
     # documented ``python scripts/train.py`` command.
     sys.modules.setdefault("scripts.train", sys.modules[__name__])
 
-from core.config import ROOT, settings
+from core.config import settings
 from core.models import FaultEvent
 from core.db import session_scope
+from core.runtime_paths import runtime_paths
 from data.generate import CHANNELS, FAILURE_MODES
 
 
@@ -466,8 +467,8 @@ def _write_artifacts(artifact_dir: Path, artifacts: dict[str, Any], manifest: di
 def train(data_root: str | Path | None = None, artifact_dir: str | Path | None = None) -> dict[str, Any]:
     """Train all A-04 model families and return the persisted manifest."""
 
-    data_path = Path(data_root) if data_root is not None else ROOT / "data"
-    output_path = Path(artifact_dir) if artifact_dir is not None else ROOT / settings.predict.artifacts_dir
+    data_path = Path(data_root) if data_root is not None else runtime_paths.data_root
+    output_path = Path(artifact_dir) if artifact_dir is not None else runtime_paths.model_root
     metadata_path = data_path / "metadata.json"
     if not metadata_path.exists():
         raise TrainingDataError(f"missing generator metadata: {metadata_path}")
@@ -625,8 +626,8 @@ def train(data_root: str | Path | None = None, artifact_dir: str | Path | None =
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-root", type=Path, default=ROOT / "data")
-    parser.add_argument("--artifacts-dir", type=Path, default=ROOT / settings.predict.artifacts_dir)
+    parser.add_argument("--data-root", type=Path, default=runtime_paths.data_root)
+    parser.add_argument("--artifacts-dir", type=Path, default=runtime_paths.model_root)
     args = parser.parse_args()
     train(args.data_root, args.artifacts_dir)
 

@@ -31,8 +31,9 @@ from typing import Any, Final, Mapping, Protocol, Sequence
 import joblib
 import numpy as np
 
-from core.config import ROOT, settings
+from core.config import settings
 from core.features import FEATURE_NAMES, FEATURE_VERSION, FeatureError, FeatureVersionMismatch, load_manifest
+from core.runtime_paths import runtime_paths
 
 
 logger = logging.getLogger(__name__)
@@ -147,7 +148,7 @@ class VerifiedModelPredictor:
     predictor_name: Final[str] = "histgradientboosting"
 
     def __init__(self, artifact_dir: str | Path | None = None) -> None:
-        self.artifact_dir = Path(artifact_dir or (ROOT / settings.predict.artifacts_dir)).resolve()
+        self.artifact_dir = Path(artifact_dir or runtime_paths.model_root).resolve()
         manifest_path = self.artifact_dir / "MANIFEST.json"
         try:
             manifest = load_manifest(manifest_path)

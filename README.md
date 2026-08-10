@@ -16,24 +16,46 @@ documented human approval or acknowledgement boundary before the system can writ
 - Deterministic failure probability, fault-mode, remaining-useful-life, and fused-risk predictions.
 - Grounded diagnoses with evidence citations, facts, assumptions, limits, confidence, and agent traces.
 - Strict A0 planner approval for immutable ERP work-order payloads and acknowledgement-only A1 routing.
-- Offline operation with no API key, external model, container runtime, or database server.
+- Offline operation with no API key or external model, plus both containerized and native workflows.
 - Replayable telemetry, downtime ledger, evaluation gates, audit hash chain, and mock ERP integration.
 - FastAPI and SQLite backend with a React, TypeScript, Vite, and Three.js interface.
 
-## Requirements
+## Docker quickstart
 
-- Python 3.12
-- Node.js 20 or newer with npm
-- Git
-
-## Quickstart
-
-Clone the repository and start the backend plus mock ERP:
+The recommended demo path requires Git, Docker Engine or Docker Desktop, and Docker Compose v2:
 
 ```bash
 git clone https://github.com/Arv-ind-s/sentineliq.git
 cd sentineliq
-python3 -m venv .venv
+docker compose up --build
+```
+
+The first launch generates the deterministic telemetry, trains and verifies the models, seeds both
+SQLite databases, and builds the retrieval index in a persistent Docker volume. When the services are
+healthy, open [`http://127.0.0.1:8080`](http://127.0.0.1:8080) and sign in as `planner` with password
+`fixture`. OpenAPI is available at
+[`http://127.0.0.1:8080/api/docs`](http://127.0.0.1:8080/api/docs).
+
+The application works without an API key. To enable the free Gemini Developer API path, copy the
+example environment file and add a key created in
+[Google AI Studio](https://aistudio.google.com/app/apikey):
+
+```bash
+cp .env.example .env
+# Edit GEMINI_API_KEY in .env, then start or recreate the stack.
+docker compose up --build
+```
+
+Never commit `.env` or put the key in `config.yaml`, an image, or a Compose build argument. Stop the
+stack with `docker compose down`; the `sentineliq_state` volume is preserved. The explicit
+`docker compose down -v` reset deletes all generated data and operational history.
+
+## Native development
+
+The original Python and Vite workflow remains supported and uses the repository-relative state layout:
+
+```bash
+python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 cp .env.example .env
@@ -41,27 +63,7 @@ python scripts/seed.py
 python scripts/run_all.py
 ```
 
-On Windows PowerShell, use:
-
-```powershell
-git clone https://github.com/Arv-ind-s/sentineliq.git
-Set-Location sentineliq
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-python scripts/seed.py
-python scripts/run_all.py
-```
-
-`scripts/seed.py` generates the plant data, trains and verifies model artifacts, backfills label-free
-time-indexed predictions, builds the local retrieval index, and seeds users plus a real PUMP-07 approval.
-It is idempotent. Existing databases must first be upgraded with
-`python -m scripts.migrate --backfill-ledger`; the command creates and verifies a backup before changing
-the database.
-
-`scripts/run_all.py` starts the API at `http://127.0.0.1:8000` and the mock ERP at
-`http://127.0.0.1:8001`. Stop it with Ctrl-C. To start the React UI, open another terminal:
+In a second terminal:
 
 ```bash
 cd ui
@@ -69,12 +71,9 @@ npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
-The API's generated OpenAPI documentation is at [`http://127.0.0.1:8000/docs`](http://127.0.0.1:8000/docs). The UI is normally at `http://127.0.0.1:5173`.
-
-The `GEMINI_API_KEY` in `.env` is optional. Create a free key in
-[Google AI Studio](https://aistudio.google.com/app/apikey) and paste it after `GEMINI_API_KEY=`. Leave
-it empty for the deterministic offline-template path. Never commit `.env` or place the key in
-`config.yaml`.
+The native UI is at `http://127.0.0.1:5173`; Vite forwards `/api` to the API at
+`http://127.0.0.1:8000`. Existing databases must be upgraded with
+`python -m scripts.migrate --backfill-ledger` rather than reseeded.
 
 ## Core capabilities
 
@@ -103,7 +102,13 @@ maintenance ERP -> redaction -> TF-IDF retrieval -> evidence bundle
                            GuardrailAgent -> diagnosis -> approval -> ERPActionAgent
 ```
 
-The Python API is the single browser-facing origin and owns authentication, orchestration, persistence, replay, audit, and health reporting. SQLite stores application state, DuckDB reads the local Parquet time series, and the mock ERP is an independent loopback FastAPI process. The agent workflow is explicit rather than framework-dependent: sensor and maintenance evidence are collected, deterministic fusion is authoritative, the coordinator narrates only supplied evidence, guardrails validate the response, and only the ERP action agent can write a work order after approval.
+The Nginx web service is the single browser-facing origin and forwards `/api` to FastAPI; API and mock
+ERP ports remain private to the Compose network. FastAPI owns authentication, orchestration,
+persistence, replay, audit, and health reporting. SQLite stores application state, DuckDB reads the
+local Parquet time series, and the mock ERP remains an independent service. The agent workflow is
+explicit rather than framework-dependent: sensor and maintenance evidence are collected,
+deterministic fusion is authoritative, the coordinator narrates only supplied evidence, guardrails
+validate the response, and only the ERP action agent can write a work order after approval.
 
 Numerical predictions never depend on the LLM. Narration uses a direct `httpx` call to the native
 Gemini Developer API with the free-tier `gemini-2.5-flash-lite` model; no LiteLLM, OpenAI, or LangChain
@@ -137,6 +142,7 @@ llm/        Provider-neutral LLM clients, TLS policy, embeddings, and response c
 scripts/    Seed, migration, replay, backup, evaluation, and startup commands
 tests/      Backend, workflow, migration, security, persistence, and KPI tests
 ui/         React/TypeScript dashboard and Playwright tests
+compose.yaml / Dockerfiles  One-command web, API, initializer, and mock ERP stack
 ```
 
 ## Validation commands
@@ -147,6 +153,9 @@ python scripts/evaluate.py
 cd ui
 npm run lint
 npm run build
+cd ..
+docker compose config
+docker compose build
 ```
 
 The test suite includes the balanced-accuracy and downtime KPI gates, demo-integrity checks, security checks, and agent/API tests. The evaluation script regenerates `eval/REPORT.md` and `eval/report.json` from the current artifacts. The current run reports token usage; free-tier limits and availability are controlled by Google.
@@ -159,7 +168,7 @@ The test suite includes the balanced-accuracy and downtime KPI gates, demo-integ
 - [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md): data, model metrics, difficulty controls, known failures, fairness notes, and intended use.
 - [`eval/REPORT.md`](eval/REPORT.md): generated evaluation report.
 - [`data/DEMO_NOTES.md`](data/DEMO_NOTES.md): generated planted-scenario notes.
-- `/docs`: generated OpenAPI documentation while the API is running.
+- `/api/docs` in Docker, or `/docs` in native development: generated OpenAPI documentation.
 
 ## License
 

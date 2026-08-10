@@ -117,6 +117,7 @@ from core.predict import Predictor, load_predictor
 from core.db import create_schema, session_scope
 from core.models import Approval as ApprovalRow, Diagnosis as DiagnosisRow, Prediction as PredictionRow
 from core.rehearsal import MECHANICAL_MODES, build_rehearsal_point, failure_horizon, risk_delta
+from core.runtime_paths import runtime_paths
 from llm.tls import gemini_verify_setting
 from api.security import RequestBodyTooLarge, SECURITY_HEADERS, TokenBucketRateLimiter, body_limit_for_path, rate_limit_for_path, request_identity
 
@@ -327,7 +328,7 @@ def _demo_alert_cue_seconds() -> float:
     """Return the latest measured PUMP-07 cue, with a safe config fallback."""
 
     lower, upper = (float(value) for value in settings.stream.demo_alert_window_s)
-    notes_path = Path(__file__).resolve().parents[1] / "data" / "DEMO_NOTES.md"
+    notes_path = runtime_paths.data_root / "DEMO_NOTES.md"
     try:
         match = _DEMO_CROSSING_RE.search(notes_path.read_text(encoding="utf-8"))
     except OSError:
@@ -1091,7 +1092,7 @@ def _check_database() -> tuple[str, float, str, str]:
 
 def _check_tsdb() -> tuple[str, float, str, str]:
     started = time.perf_counter()
-    sensor_root = Path(__file__).resolve().parents[1] / "data" / "sensors"
+    sensor_root = runtime_paths.sensor_root
     if not sensor_root.exists():
         return "down", _elapsed_ms(started), "time-series store is unavailable", "closed"
     if not any(sensor_root.rglob("*.parquet")):
@@ -1101,7 +1102,7 @@ def _check_tsdb() -> tuple[str, float, str, str]:
 
 def _check_models() -> tuple[str, float, str, str]:
     started = time.perf_counter()
-    manifest_path = Path(__file__).resolve().parents[1] / "models" / "MANIFEST.json"
+    manifest_path = runtime_paths.model_root / "MANIFEST.json"
     if not manifest_path.exists():
         return "down", _elapsed_ms(started), "model manifest is unavailable", "closed"
     try:
@@ -1995,7 +1996,7 @@ async def ingest_dlq() -> list[DlqItem]:
 
 
 def _ledger_default_tau() -> float:
-    manifest_path = Path(__file__).resolve().parents[1] / settings.predict.artifacts_dir / "MANIFEST.json"
+    manifest_path = runtime_paths.model_root / "MANIFEST.json"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         value = float(manifest.get("threshold_tau", settings.predict.threshold_tau_default))
@@ -2106,7 +2107,7 @@ async def ledger(tau: float | None = Query(None, ge=0, le=1)) -> LedgerResponse:
 @app.get("/eval/report", response_model=EvalReportResponse, tags=["evaluation"], dependencies=[Depends(require_authenticated)])
 async def eval_report() -> EvalReportResponse:
     root = Path(__file__).resolve().parents[1]
-    manifest_path = root / "models" / "MANIFEST.json"
+    manifest_path = runtime_paths.model_root / "MANIFEST.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
     metrics_data = manifest.get("metrics", {})
     balanced = float(metrics_data.get("failure", {}).get("balanced_accuracy", 0.0))

@@ -25,9 +25,10 @@ from agents.coordinator_agent import CoordinatorAgent
 from agents.guardrail_agent import GuardrailAgent
 from agents.maintenance_log_agent import MaintenanceLogAgent
 from agents.sensor_agent import SensorAgent
-from core.config import ROOT, settings
+from core.config import settings
 from core.db import get_engine
 from core.predict import load_predictor
+from core.runtime_paths import runtime_paths
 
 
 class ReplayError(RuntimeError):
@@ -55,7 +56,7 @@ def _epoch_ms(value: Any) -> int:
 class _ParquetTSDBClient:
     """Small replay-only TSDB adapter for the current Parquet data layout."""
 
-    def __init__(self, sensor_root: Path = ROOT / "data" / "sensors") -> None:
+    def __init__(self, sensor_root: Path = runtime_paths.sensor_root) -> None:
         if not sensor_root.exists():
             raise ReplayError(f"sensor data is missing: {sensor_root}")
         self.dataset = ds.dataset(sensor_root, format="parquet", partitioning="hive")

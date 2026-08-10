@@ -17,7 +17,8 @@ from uuid import uuid4
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from core.config import ROOT, settings
+from core.config import settings
+from core.runtime_paths import runtime_paths
 
 
 TABLES = ("approvals", "audit_ledger")
@@ -47,7 +48,7 @@ def _copy_table(source: sqlite3.Connection, destination: sqlite3.Connection, tab
 def backup(
     *,
     database_url: str | None = None,
-    output_dir: str | Path = ROOT / "backups",
+    output_dir: str | Path = runtime_paths.backup_root,
     output_path: str | Path | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
@@ -82,7 +83,7 @@ def backup(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db-url", default=None, help="SQLAlchemy plant DB URL; defaults to DB_URL")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "backups")
+    parser.add_argument("--output-dir", type=Path, default=runtime_paths.backup_root)
     parser.add_argument("--output", dest="output_path", type=Path, default=None)
     return parser
 

@@ -18,11 +18,11 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from core.redaction import injection_scan, redact
+from core.runtime_paths import runtime_paths
 
 
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ERP_DB = ROOT / "erp" / "erp.db"
-DEFAULT_INDEX_PATH = ROOT / "data" / "index" / "logs.npz"
+DEFAULT_ERP_DB = runtime_paths.erp_db
+DEFAULT_INDEX_PATH = runtime_paths.index_path
 MAX_FEATURES = 4_000
 TOP_SIMILAR = 8
 MAX_RESULTS = 6

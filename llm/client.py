@@ -15,7 +15,8 @@ from urllib.parse import quote, urlparse
 
 import httpx
 
-from core.config import ROOT, settings
+from core.config import settings
+from core.runtime_paths import runtime_paths
 from llm.cache import CachedResponse, LLMCache, cache_key, evidence_bundle
 from llm.tls import GeminiVerifySetting, gemini_verify_setting
 
@@ -228,7 +229,7 @@ class _GeminiBaseClient:
         else:
             configured_cache = llm_config.get("cache", settings.llm.cache) if isinstance(llm_config, Mapping) else getattr(llm_config, "cache", settings.llm.cache)
             if cache_path is None:
-                cache_path = ROOT / "data" / "llm_cache.db"
+                cache_path = runtime_paths.llm_cache_path
             cache_ttl = configured_cache.get("ttl_s", settings.llm.cache.ttl_s) if isinstance(configured_cache, Mapping) else getattr(configured_cache, "ttl_s", settings.llm.cache.ttl_s)
             self.cache = LLMCache(cache_path, int(cache_ttl), clock)
         if emit_tls_warning:
