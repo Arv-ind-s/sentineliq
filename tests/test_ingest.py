@@ -37,6 +37,18 @@ def test_degrading_ticks_update_one_stable_alert(tmp_path) -> None:
         assert connection.execute("SELECT COUNT(*) FROM alerts").fetchone()[0] == 1
 
 
+def test_duplicate_ingest_has_no_alert_or_stream_side_effects(tmp_path) -> None:
+    events = []
+    point = _point(0, vibration=12)
+    first = process_batch([point], database_url=_url(tmp_path), on_event=lambda *event: events.append(event))
+    before = list(events)
+    replay = process_batch([point, point], database_url=_url(tmp_path), on_event=lambda *event: events.append(event))
+    assert first.accepted == 1
+    assert replay.accepted == replay.rejected == 0
+    assert not replay.alert_ids
+    assert events == before
+
+
 def test_replay_source_failure_does_not_stop_other_machines() -> None:
     class GoodSource:
         def __init__(self, machine_id: str) -> None:

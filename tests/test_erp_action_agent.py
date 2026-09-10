@@ -105,6 +105,101 @@ def action_payload() -> dict[str, object]:
     return {**values, "approval_id": "approval-1", "payload_hash": hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":")).encode()).hexdigest()}
 
 
+def test_approval_audit_and_queue_roll_back_together(database_url, monkeypatch) -> None:
+    import api.main as api_main
+    import core.audit as audit
+
+    approved_database(database_url)
+    monkeypatch.setattr(api_main.settings, "db_url", database_url)
+    with session_scope(database_url) as session:
+        session.get(Approval, 1).state = "pending"
+
+    def fail(*args):
+        raise RuntimeError("audit unavailable")
+
+    monkeypatch.setattr(audit, "append_in_transaction", fail)
+    with pytest.raises(RuntimeError, match="audit unavailable"):
+        api_main._transition_approval("approval-1", "approved", "planner", "repair")
+    with session_scope(database_url) as session:
+        assert session.get(Approval, 1).state == "pending"
+        exists = session.execute(text("SELECT COUNT(*) FROM sqlite_master WHERE name='pending_erp_sync'")).scalar_one()
+        assert not exists or session.execute(text("SELECT COUNT(*) FROM pending_erp_sync")).scalar_one() == 0
+
+
+def test_approval_survives_restart_before_dispatch_and_replays_once(database_url, monkeypatch) -> None:
+    import api.main as api_main
+    from core.audit import verify_ledger
+    from fastapi import HTTPException
+
+    approved_database(database_url)
+    monkeypatch.setattr(api_main.settings, "db_url", database_url)
+    with session_scope(database_url) as session:
+        session.get(Approval, 1).state = "pending"
+    first = api_main._transition_approval("approval-1", "approved", "planner", "repair")
+    repeat = api_main._transition_approval("approval-1", "approved", "planner", "other reason")
+    assert first["decided_at"] == repeat["decided_at"]
+    assert repeat["reason"] == "repair"
+    assert first["erp_sync_status"] == "pending_sync"
+    with pytest.raises(HTTPException) as conflict:
+        api_main._transition_approval("approval-1", "rejected", "planner", "changed mind")
+    assert conflict.value.status_code == 409
+    fake = CompleteFakeERP([200])
+    restarted = ERPActionAgent(database_url=database_url, erp_client=fake, start_worker=False)
+    try:
+        assert restarted.drain_pending() == 1
+        assert restarted.drain_pending() == 0
+        assert len(fake.created) == 1
+        assert verify_ledger(database_url=database_url).intact
+        with session_scope(database_url) as session:
+            assert session.get(Approval, 1).erp_sync_status == "synced"
+            assert session.execute(text("SELECT COUNT(*) FROM audit_ledger WHERE action='approval'")).scalar_one() == 1
+    finally:
+        restarted.close()
+
+
+def test_concurrent_conflicting_decisions_have_one_winner(database_url, monkeypatch) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from fastapi import HTTPException
+    import api.main as api_main
+    from core.audit import verify_ledger
+
+    approved_database(database_url)
+    monkeypatch.setattr(api_main.settings, "db_url", database_url)
+    with session_scope(database_url) as session:
+        session.get(Approval, 1).state = "pending"
+
+    def decide(state):
+        try:
+            return api_main._transition_approval("approval-1", state, "planner", "decision")["state"]
+        except HTTPException as error:
+            return error.status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(decide, ["approved", "rejected"]))
+    assert results.count(409) == 1
+    assert verify_ledger(database_url=database_url).intact
+
+
+def test_crash_after_remote_success_retains_idempotent_recovery(database_url, monkeypatch) -> None:
+    approved_database(database_url)
+    fake = CompleteFakeERP([200])
+    agent = ERPActionAgent(database_url=database_url, erp_client=fake, start_worker=False, pending_retry_delay_s=0)
+
+    def crash(result):
+        raise RuntimeError("local mirror unavailable")
+
+    monkeypatch.setattr(agent, "_mirror_work_order", crash)
+    with pytest.raises(RuntimeError, match="local mirror unavailable"):
+        agent.create_work_order(action_payload(), actor="planner", role="planner")
+    agent.close()
+    restarted = ERPActionAgent(database_url=database_url, erp_client=fake, start_worker=False)
+    try:
+        assert restarted.drain_pending() == 1
+        assert len(fake.created) == 1
+    finally:
+        restarted.close()
+
+
 def test_missing_approval_raises_permission_error_and_writes_security_event(database_url: str, caplog: pytest.LogCaptureFixture) -> None:
     fake = FakeERP([200])
     agent = ERPActionAgent(database_url=database_url, erp_client=fake, start_worker=False)

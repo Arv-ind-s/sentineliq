@@ -45,7 +45,7 @@ export function LoginScreen() {
   const selectPersona = (role: UserRole) => {
     setSelectedRole(role);
     setUsername(role);
-    setPassword("");
+    setPassword(import.meta.env.VITE_DEMO_PASSWORD ?? "");
     setError(null);
   };
 
@@ -83,7 +83,7 @@ export function LoginScreen() {
           {error && <div className="login-error" role="alert"><CircleAlert size={16} aria-hidden="true" /><span>{error}</span></div>}
           <button className="primary-button login-submit" type="submit" disabled={isLoading || submitting}>{submitting ? "Opening workspace…" : selectedRole ? `Enter as ${ROLE_PROFILES[selectedRole].label}` : "Sign in"}</button>
         </form>
-        <p className="login-note">Demo personas use prefilled credentials. Your selected role controls the workspace and actions available after sign-in.</p>
+        <p className="login-note">{import.meta.env.VITE_DEMO_PASSWORD ? "Demo personas use prefilled credentials." : "Choose a persona and enter your password."} Your selected role controls the workspace and actions available after sign-in.</p>
       </section>
     </main>
   );

@@ -140,6 +140,32 @@ state below one directory; `SENTINEL_DATA_ROOT`, `SENTINEL_MODEL_ROOT`, `ERP_DB_
 
 ## Capacity and production boundary
 
+### Remediation upgrade
+
+Run `python -m scripts.migrate` before starting this version against an existing database.
+Schema version 3 normalizes legacy data-quality alerts and preserves independent ERP retry records.
+The command takes a consistent SQLite backup, verifies foreign keys and the audit chain, and rolls
+back the migration if verification fails. Restore the reported backup with the matching previous
+application version if a rollback is needed; stop the API and ERP retry worker before restoring.
+All plant database clients resolve relative `DB_URL` paths from the repository root. Only file-backed
+SQLite URLs without query parameters are supported.
+
+ERP permissions now come from exact server-configured credentials: `ERP_API_KEY` grants read/write,
+and optional `ERP_READ_API_KEY` grants read-only access. These must be different credentials.
+Caller-created token suffixes are rejected. The legacy `X-ERP-Scopes` header can only narrow access.
+Approval decisions, audit entries, and ERP dispatch requests commit atomically; same-decision retries
+are idempotent, while reversing a terminal decision returns HTTP 409. A1 acknowledgement remains a
+technician action and does not create an ERP work order.
+
+For local persona password prefill, copy `ui/.env.example` to `ui/.env.local` before running Vite.
+`VITE_DEMO_PASSWORD` is public browser configuration for disposable demo accounts. Leave it unset in
+production builds; persona selection then fills only the username.
+
+The evaluation report uses held-out model scores and a strict pre-failure prediction horizon.
+Threshold-crossing episodes incur false-positive costs when unmatched. A failed 20% downtime target
+is reported as failed; the interactive ledger remains a historical simulation, not a held-out accuracy
+claim. Regenerate reports with `python scripts/evaluate.py` after changing model artifacts.
+
 The supported demo envelope is 15 machines, 60 days of telemetry, 60 planted fault events, and 480 ERP
 work orders. SQLite uses WAL mode and a single-writer pattern. The Compose stack intentionally has one
 API replica and one ERP replica and does not provide TLS termination, a production secret manager,

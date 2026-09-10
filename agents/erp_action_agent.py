@@ -37,7 +37,7 @@ _PENDING_TABLE = "pending_erp_sync"
 _PENDING_SCHEMA = """
 CREATE TABLE IF NOT EXISTS pending_erp_sync (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    prediction_id VARCHAR(64) NOT NULL UNIQUE,
+    prediction_id VARCHAR(64) NOT NULL,
     idempotency_key VARCHAR(64) NOT NULL UNIQUE,
     payload_json TEXT NOT NULL,
     attempts INTEGER NOT NULL DEFAULT 0,
@@ -100,7 +100,6 @@ class HTTPERPClient:
                 url,
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
-                    "X-ERP-Scopes": "workorder:write",
                     "Idempotency-Key": idempotency_key,
                 },
                 json=dict(payload),
@@ -383,7 +382,8 @@ class ERPActionAgent:
         except Exception:  # pragma: no cover - audit failure must not hide the security decision
             logger.exception("could not persist blocked ERP tool execution audit event")
 
-    def _erp_payload(self, payload: Mapping[str, Any]) -> dict[str, Any]:
+    @staticmethod
+    def _erp_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
         asset_id = str(payload.get("asset_id") or payload.get("machine_id") or "")
         if not asset_id:
             raise ValueError("ERP work-order payload requires asset_id or machine_id")
@@ -507,6 +507,8 @@ class ERPActionAgent:
             approval = session.get(Approval, approval_id)
             if approval is None:
                 return
+            if approval.erp_sync_status == "synced" and status != "synced":
+                return
             approval.erp_sync_status = status
             if workorder_id not in {None, ""}:
                 approval.erp_workorder_id = str(workorder_id)
@@ -566,9 +568,13 @@ class ERPActionAgent:
 
         idempotency_key = hashlib.sha256(f"approval-{approval.id}:{approval.payload_hash}".encode("utf-8")).hexdigest()
         erp_payload = self._erp_payload(values)
+        # Persist before the first HTTP request, including explicit retries.
+        self._pending.enqueue(prediction_id, idempotency_key, erp_payload, "", attempts=0, delay_s=self.pending_retry_delay_s)
         try:
             result = self._request_with_retries(erp_payload, idempotency_key)
         except ERPClientError:
+            with session_scope(self.database_url) as session:
+                session.execute(text("UPDATE pending_erp_sync SET status = 'failed' WHERE idempotency_key = :key"), {"key": idempotency_key})
             self._record_approval_sync(int(approval.id), "failed")
             raise
         except ERPTransientError as exc:
@@ -578,7 +584,6 @@ class ERPActionAgent:
             logger.warning("ERP write queued for pending sync", extra={"prediction_id": prediction_id, "idempotency_key": idempotency_key})
             return {"status": "pending_sync", "prediction_id": prediction_id, "idempotency_key": idempotency_key, "error": str(exc)}
 
-        self._pending.remove_by_key(idempotency_key)
         self._mirror_work_order(result)
         self._record_approval_sync(int(approval.id), "synced", result.get("workorder_id"))
         _append_audit_event(
@@ -588,6 +593,7 @@ class ERPActionAgent:
             actor=actor or "erp_action",
             database_url=self.database_url,
         )
+        self._pending.remove_by_key(idempotency_key)
         return result
 
     def drain_pending(self, *, limit: int = 50) -> int:
@@ -597,6 +603,12 @@ class ERPActionAgent:
         for row in self._pending.due(now=int(time.time() * 1000), limit=limit):
             payload = json.loads(str(row["payload_json"]))
             approval_id = self._approval_id_for_idempotency(str(row["prediction_id"]), str(row["idempotency_key"]))
+            approval = self._approval(str(row["prediction_id"]), approval_id, None, None) if approval_id is not None else None
+            if approval is None or not approval.action_payload or self._erp_payload(approval.action_payload) != payload:
+                self._pending.reschedule(int(row["id"]), int(row["attempts"]), "Queued payload lacks a matching authorized approval", delay_s=0, status="failed")
+                if approval_id is not None:
+                    self._record_approval_sync(approval_id, "failed")
+                continue
             try:
                 result = self._request_with_retries(payload, str(row["idempotency_key"]))
             except ERPClientError as exc:
@@ -609,7 +621,6 @@ class ERPActionAgent:
                 if approval_id is not None:
                     self._record_approval_sync(approval_id, "pending_sync")
                 continue
-            self._pending.remove(int(row["id"]))
             self._mirror_work_order(result)
             if approval_id is not None:
                 self._record_approval_sync(approval_id, "synced", result.get("workorder_id"))
@@ -621,6 +632,7 @@ class ERPActionAgent:
                 actor="erp_action",
                 database_url=self.database_url,
             )
+            self._pending.remove(int(row["id"]))
         return drained
 
     def run(self, context: RunContext) -> AgentResult:

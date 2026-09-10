@@ -262,27 +262,54 @@ def _within_tolerance(candidate: float, expected: float, dimension: str) -> bool
 def numeric_grounding(draft: DiagnosisDraft, bundle: Mapping[str, Any] | BaseModel, *, trace_id: str = "") -> list[GuardrailRejection]:
     """Return numeric-grounding violations for a validated draft."""
 
-    quantities = normalise_numeric(bundle)
-    allowed = [representation for quantity in quantities for representation in quantity.representations]
+    raw = bundle.model_dump() if isinstance(bundle, BaseModel) else bundle
+    indexed: dict[str, Any] = {}
+
+    def index(value: Any) -> None:
+        if isinstance(value, Mapping):
+            identifier = str(value.get("id", "")).strip("[]").upper()
+            if re.fullmatch(r"[SM]\d+", identifier):
+                indexed[identifier] = value
+            for key, child in value.items():
+                if re.fullmatch(r"[SM]\d+", str(key).upper()):
+                    indexed[str(key).upper()] = child
+                index(child)
+        elif isinstance(value, (list, tuple)):
+            for child in value:
+                index(child)
+
+    index(raw)
     violations: list[GuardrailRejection] = []
     # Only prose fields carry claims that must trace back to evidence. Structured
     # planning fields (est_labour_hours, priority) are the Coordinator's own
     # operational estimate, not a fact about the evidence bundle, so they are
     # deliberately excluded via `_draft_strings` (fractional hours like 0.5
     # would otherwise fail grounding and reject an otherwise-valid draft).
-    text = " ".join(_draft_strings(draft))
-    text = _CITATION_RE.sub(" ", text)
-    text = _ISO_DATETIME_RE.sub(" ", text)
-    text = _IDENTIFIER_RE.sub(" ", text)
-    for number in _parse_numbers(text):
-        if any(
-            dimension == candidate_dimension and _within_tolerance(value, expected, dimension)
-            for candidate_dimension, value in _parsed_representations(number)
-            for dimension, expected in allowed
-            if dimension == candidate_dimension or dimension == "generic" or candidate_dimension == "generic"
-        ):
-            continue
-        violations.append(GuardrailRejection(trace_id, "numeric_grounding", number.raw, f"Number {number.raw!r} is not present in the normalised evidence bundle."))
+    claims = [draft.fault_diagnosis, *draft.reasoning_steps, *draft.facts, *draft.assumptions, draft.limits]
+    for action in draft.recommended_actions:
+        suffix = "".join(f"[{ref.strip('[]')}]" for ref in action.citations)
+        claims.extend(f"{value} {suffix}" for value in (action.action, action.rationale, action.window, *action.parts))
+    for claim in claims:
+        refs = {match.group("id") for match in _CITATION_RE.finditer(claim)}
+        support = {ref: indexed[ref] for ref in refs if ref in indexed}
+        # Sensor/model aggregates are computed from the sensor evidence; they
+        # can support derived risk and RUL claims when sensor evidence is cited.
+        if any(ref.startswith("S") for ref in refs):
+            for section in ("sensor", "fusion"):
+                data = raw.get(section, {})
+                if isinstance(data, Mapping):
+                    support[section] = {key: value for key, value in data.items()
+                                        if key != "evidence" and not re.fullmatch(r"[SM]\d+", str(key))}
+        allowed = [representation for quantity in normalise_numeric(support) for representation in quantity.representations]
+        prose = _IDENTIFIER_RE.sub(" ", _ISO_DATETIME_RE.sub(" ", _CITATION_RE.sub(" ", claim)))
+        for number in _parse_numbers(prose):
+            if any(
+                dimension == candidate_dimension and _within_tolerance(value, expected, dimension)
+                for candidate_dimension, value in _parsed_representations(number)
+                for dimension, expected in allowed
+            ):
+                continue
+            violations.append(GuardrailRejection(trace_id, "numeric_grounding", number.raw, f"Number {number.raw!r} is not supported by the cited evidence."))
     return violations
 
 
@@ -338,34 +365,29 @@ def citation_validation(draft: DiagnosisDraft, bundle: Mapping[str, Any] | BaseM
         references.extend(reference.strip("[]").upper() for reference in action.citations)
     references.extend(reference.strip("[]").upper() for reference in draft.citations)
     violations: list[GuardrailRejection] = []
+    for claim in (draft.fault_diagnosis, *draft.reasoning_steps, *(action.rationale for action in draft.recommended_actions)):
+        if not _CITATION_RE.search(claim):
+            violations.append(GuardrailRejection(trace_id, "citation_validity", claim, "Diagnosis, reasoning, and action rationale require supporting citations."))
     for reference in references:
         if reference not in valid_ids:
             violations.append(GuardrailRejection(trace_id, "citation_validity", f"[{reference}]", f"Citation [{reference}] does not resolve to an evidence item."))
     return violations
 
 
-def _unsafe_text(draft: DiagnosisDraft) -> str:
-    return " ".join(
-        f"{action.action} {action.rationale}"
-        for action in draft.recommended_actions
-    ).lower()
-
-
-_UNSAFE_PATTERNS: tuple[tuple[str, str], ...] = (
-    ("bypass the interlock", "bypass safety interlock"),
-    ("disable an alarm", "disable an alarm"),
-    ("override a pressure relief", "override a pressure relief setting"),
-    ("continue operating", "continue operating with a predicted overheat"),
-    ("defer maintenance", "defer maintenance on a CRITICAL asset"),
-)
-
-
 def unsafe_action_validation(draft: DiagnosisDraft, *, trace_id: str = "") -> list[GuardrailRejection]:
-    text = _unsafe_text(draft)
+    text = " ".join(_draft_strings(draft)).lower().replace("’", "'")
     violations: list[GuardrailRejection] = []
-    for phrase, description in _UNSAFE_PATTERNS:
-        if phrase in text and (phrase != "continue operating" or "overheat" in text) and (phrase != "defer maintenance" or "critical" in text):
-            violations.append(GuardrailRejection(trace_id, "unsafe_action", description, f"Unsafe recommendation matched denylist: {description}."))
+    patterns = (
+        r"\b(?:bypass|disable|override|ignore|suppress|remove|disconnect|turn\s+off|switch\s+off)\b[^.;!?]{0,60}\b(?:interlocks?|alarms?|relief|guards?|emergency\s+stop|safety\s+shutdown)\b",
+        r"\b(?:continue|keep)\s+(?:operating|running)\b[^.;!?]{0,90}\b(?:overheat\w*|critical|leak\w*)\b",
+        r"\b(?:defer|delay|postpone)\s+(?:maintenance|repair\w*|inspection)\b[^.;!?]{0,90}\bcritical\b",
+    )
+    for pattern in patterns:
+        for match in re.finditer(pattern, text):
+            prefix = text[max(0, match.start() - 30):match.start()]
+            if re.search(r"\b(?:do\s+not|don't|never|must\s+not|mustn't)\s+(?:ever\s+)?$", prefix):
+                continue
+            violations.append(GuardrailRejection(trace_id, "unsafe_action", match.group(), "Unsafe recommendation disables protection or delays a critical intervention."))
     return violations
 
 

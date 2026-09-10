@@ -88,9 +88,8 @@ class MachineEconomics:
 class PredictionSignal:
     """A model probability at a timestamp.
 
-    ``event_id`` is preferred because it is the most precise association.  If
-    it is absent, the signal is matched to an event on the same machine when
-    it falls in the event's recommended pre-failure window.
+    ``event_id`` is an optional constraint for controlled simulator fixtures.
+    Model evaluation omits it and matches by machine and prediction timestamp.
     """
 
     signal_id: str | int
@@ -411,7 +410,7 @@ def simulate_downtime(
 
     ``predictions`` contains time-indexed model probabilities.  A signal is a
     true positive when it crosses ``tau`` in the 24-hour (configurable)
-    recommended window ending at a fault event; otherwise it is a false
+    recommended window strictly before failure; otherwise it is a false
     positive.  At most one planned action is charged per fault event, while
     every unmatched signal is charged as its own false-positive action.
 
@@ -474,7 +473,7 @@ def simulate_downtime(
                 if signal_key in matched_signal_ids:
                     continue
                 explicit_match = signal.event_id is not None and str(signal.event_id) == str(event.event_id)
-                in_window = event.onset_ts - recommended_window_ms <= signal.ts <= event.failure_ts
+                in_window = event.failure_ts - recommended_window_ms <= signal.ts < event.failure_ts
                 if in_window and (explicit_match or signal.event_id is None):
                     matched_event_ids.add(event_key)
                     matched_signal_ids.add(signal_key)

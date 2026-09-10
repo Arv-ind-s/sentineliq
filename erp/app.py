@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import secrets
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
@@ -164,17 +165,18 @@ def _parse_credentials(authorization: str | None, requested_scopes: str | None) 
         raise _unauthorized()
     token = authorization.removeprefix("Bearer ").strip()
     configured_key = _api_key()
-    token_key = token
-    token_scopes: set[str] = set(ERP_SCOPES)
-    for separator in ("|", ":"):
-        if token.startswith(f"{configured_key}{separator}"):
-            token_key, encoded_scopes = token.split(separator, 1)
-            token_scopes = {scope.strip() for scope in encoded_scopes.split(",") if scope.strip()}
-            break
-    if token_key != configured_key:
+    read_key = os.environ.get("ERP_READ_API_KEY", "")
+    if read_key and secrets.compare_digest(read_key, configured_key):
+        raise HTTPException(status_code=503, detail="ERP read and write credentials must differ")
+    if secrets.compare_digest(token, configured_key):
+        token_scopes = set(ERP_SCOPES)
+    elif read_key and secrets.compare_digest(token, read_key):
+        token_scopes = {"workorder:read"}
+    else:
         raise _unauthorized("Invalid ERP bearer token")
+    # A request header may restrict a credential, but can never grant authority.
     if requested_scopes is not None:
-        token_scopes = {scope.strip() for scope in requested_scopes.split(",") if scope.strip()}
+        token_scopes &= {scope.strip() for scope in requested_scopes.split(",") if scope.strip()}
     return token_scopes
 
 

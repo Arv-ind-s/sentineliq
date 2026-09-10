@@ -64,3 +64,45 @@ def test_report_contains_tables_confusion_matrix_and_run_provenance() -> None:
 def test_reliability_run_count_must_be_positive() -> None:
     with pytest.raises(ValueError, match="reliability_runs"):
         EvaluationConfig(reliability_runs=0)
+
+
+def test_downtime_evaluation_uses_only_heldout_scores_and_reports_a_failed_gate(monkeypatch, tmp_path) -> None:
+    import sqlite3
+    from types import SimpleNamespace
+    import numpy as np
+    import eval.harness as harness
+
+    hour = 3_600_000
+    with sqlite3.connect(tmp_path / "plant.db") as connection:
+        connection.executescript("""
+            CREATE TABLE fault_events (id INTEGER, machine_id TEXT, onset_ts INTEGER, failure_ts INTEGER, actual_downtime_min INTEGER);
+            CREATE TABLE machines (id TEXT, hourly_downtime_cost_gbp REAL);
+            CREATE TABLE work_orders (workorder_id TEXT, machine_id TEXT, order_type TEXT, cost_gbp REAL);
+            INSERT INTO machines VALUES ('PUMP-01', 1800);
+        """)
+        connection.execute("INSERT INTO fault_events VALUES (1, 'PUMP-01', ?, ?, 320)", (hour, 100 * hour))
+    # All crossings occur too early: the held-out result must fail the KPI.
+    dataset = SimpleNamespace(features=np.array([[99], [.9], [.9], [.1], [.9]]),
+                              machine_ids=np.array(["PUMP-01"] * 5),
+                              window_ends=np.array([1, 30, 31, 101, 130]) * hour)
+    monkeypatch.setattr(harness.train, "_load_events", lambda _: [])
+    monkeypatch.setattr(harness.train, "_load_sensor_frame", lambda _: None)
+    monkeypatch.setattr(harness.train, "_build_windows", lambda *_: dataset)
+    monkeypatch.setattr(harness.train, "_split_windows", lambda *_: SimpleNamespace(train=np.array([0]), test=np.array([1, 2, 3, 4])))
+    monkeypatch.setattr(harness.train, "_impute", lambda features, train: (features, None))
+    monkeypatch.setattr(harness, "_load_json", lambda _: {"threshold_tau": .5, "model_version": "test"})
+
+    class Model:
+        def predict_proba(self, features):
+            assert 99 not in features
+            probabilities = features[:, 0]
+            return np.column_stack((1 - probabilities, probabilities))
+
+    monkeypatch.setattr(harness.joblib, "load", lambda _: Model())
+    result = harness._downtime_metrics(EvaluationConfig(data_root=tmp_path, artifact_dir=tmp_path))
+    assert result["event_total"] == 1
+    assert result["false_positive_count"] == 1
+    assert result["recall"] == 0
+    assert result["passed"] is False
+    assert result["reduction_pct"] < 0
+    assert result["heldout_signals"] == 3

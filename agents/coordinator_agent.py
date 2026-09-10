@@ -517,7 +517,7 @@ def _template(decision: FusionDecision, citation: str) -> CoordinatorDraft:
         action = "Inspect the affected equipment and prepare a controlled repair."
     ref = f"[{citation}]"
     return CoordinatorDraft(
-        fault_diagnosis=f"Deterministic fusion returned {decision.band} risk and selected {decision.action_class}.",
+        fault_diagnosis=f"Deterministic fusion returned {decision.band} risk and selected {decision.action_class}. {ref}",
         reasoning_steps=[
             f"The deterministic fusion band is {decision.band}. {ref}",
             f"The fusion decision fixes the confidence before narrative generation. {ref}",

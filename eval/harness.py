@@ -544,26 +544,41 @@ def _downtime_metrics(config: EvaluationConfig) -> dict[str, Any]:
             history = connection.execute(
                 "SELECT machine_id, order_type, cost_gbp FROM work_orders ORDER BY workorder_id"
             ).fetchall()
-            signals = connection.execute(
-                "SELECT id AS signal_id, machine_id, ts, p_failure AS probability "
-                "FROM predictions WHERE source = 'historical_backfill' ORDER BY machine_id, ts, id"
-            ).fetchall()
         finally:
             connection.close()
     except sqlite3.Error as exc:
         raise RuntimeError(f"Unable to load downtime evaluation data from {database_path}") from exc
 
-    manifest_path = config.artifact_dir / "MANIFEST.json"
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        tau = float(manifest.get("threshold_tau", settings.predict.threshold_tau_default))
-    except (OSError, TypeError, ValueError, json.JSONDecodeError):
-        tau = settings.predict.threshold_tau_default
+    manifest = _load_json(config.artifact_dir / "MANIFEST.json")
+    tau = float(manifest.get("threshold_tau", settings.predict.threshold_tau_default))
     if not 0 <= tau <= 1:
-        tau = settings.predict.threshold_tau_default
+        raise ValueError("model threshold must be between zero and one")
 
-    if not signals:
-        raise RuntimeError("ledger_predictions_unavailable: run scripts/migrate.py --backfill-ledger")
+    # Use the same held-out partition and train-only imputation as predictive
+    # accuracy evaluation. Historical serving scores may include training data.
+    labels = train._load_events(config.data_root)
+    dataset = train._build_windows(train._load_sensor_frame(config.data_root), labels)
+    metadata = _load_json(config.data_root / "metadata.json")
+    split = train._split_windows(dataset, metadata, labels)
+    features, _ = train._impute(dataset.features, split.train)
+    model = joblib.load(config.artifact_dir / "failure_calibrated.joblib")
+    probabilities = np.asarray(model.predict_proba(features[split.test])[:, 1], dtype=np.float64)
+    signals = [
+        {"signal_id": f"heldout-{int(index)}", "machine_id": str(dataset.machine_ids[index]),
+         "ts": int(dataset.window_ends[index]), "probability": float(probability)}
+        for index, probability in zip(split.test, probabilities, strict=True)
+    ]
+    intervals: dict[str, tuple[int, int]] = {}
+    for signal in signals:
+        machine = signal["machine_id"]
+        start, end = intervals.get(machine, (signal["ts"], signal["ts"]))
+        intervals[machine] = (min(start, signal["ts"]), max(end, signal["ts"]))
+    horizon_ms = settings.predict.horizon_hours * train.HOUR_MS
+    events = [event for event in events if event["machine_id"] in intervals
+              and event["failure_ts"] is not None
+              and intervals[event["machine_id"]][0] < event["failure_ts"] <= intervals[event["machine_id"]][1]]
+    # Exclude right-censored predictions whose outcome horizon is unobserved.
+    signals = [signal for signal in signals if signal["ts"] <= intervals[signal["machine_id"]][1] - horizon_ms]
     result = simulate_downtime(
         events,
         machine_costs,
@@ -571,6 +586,7 @@ def _downtime_metrics(config: EvaluationConfig) -> dict[str, Any]:
         tau=tau,
         erp_history=history,
         probability_snapshots=True,
+        recommended_window_hours=settings.predict.horizon_hours,
     )
     event_total = len(events)
     missed_failures = len(result.predictive.missed_failure_ids)
@@ -578,6 +594,11 @@ def _downtime_metrics(config: EvaluationConfig) -> dict[str, Any]:
     false_positive_rate = result.predictive.false_positive_count / event_total if event_total else 0.0
     implied_min_recall = 0.278 + 0.39 * false_positive_rate
     return {
+        "basis": "held-out model scores; threshold-crossing episodes; complete outcome horizons",
+        "model_version": manifest.get("model_version", manifest.get("artifacts", {}).get("failure_calibrated.joblib", "unknown")),
+        "evaluation_intervals_ms": {machine: list(interval) for machine, interval in intervals.items()},
+        "heldout_signals": len(signals),
+        "split": "unseen machines plus final 20% of time; train-only imputation",
         "tau": result.tau,
         "reduction_pct": result.reduction_pct,
         "target_reduction_pct": 20.0,

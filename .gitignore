@@ -1,5 +1,6 @@
 .env
 .envrc
+ui/.env.local
 .venv/
 venv/
 env/

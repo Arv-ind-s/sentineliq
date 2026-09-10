@@ -109,7 +109,7 @@ def test_generated_sixty_event_stream_is_evaluated_identically_for_each_policy()
         connection.close()
 
     predictions = [
-        {"signal_id": f"event-{row['event_id']}", "machine_id": row["machine_id"], "ts": row["onset_ts"], "probability": 0.9, "event_id": row["event_id"]}
+        {"signal_id": f"event-{row['event_id']}", "machine_id": row["machine_id"], "ts": row["failure_ts"] - 1, "probability": 0.9, "event_id": row["event_id"]}
         for row in events
     ]
     result = simulate_downtime(events, machines, predictions, erp_history=history)
@@ -120,3 +120,16 @@ def test_generated_sixty_event_stream_is_evaluated_identically_for_each_policy()
     assert result.predictive.downtime_minutes == 60 * 90
     assert result.predictive.missed_failure_ids == ()
     assert result.reduction_pct == 71.875
+
+
+def test_only_pre_failure_horizon_counts_and_crossings_are_deduplicated() -> None:
+    hour = 3_600_000
+    event = FaultEvent("fault", "PUMP-01", 1 * hour, 100 * hour)
+    machine = MachineEconomics("PUMP-01")
+    early = simulate_downtime([event], [machine], [PredictionSignal("early", "PUMP-01", 2 * hour, .9)])
+    assert early.predictive.missed_failure_ids == ("fault",)
+    assert early.predictive.false_positive_count == 1
+    signals = [PredictionSignal(str(ts), "PUMP-01", ts * hour, probability) for ts, probability in [(75, .1), (76, .9), (77, .9), (78, .9), (101, .1), (102, .9)]]
+    result = simulate_downtime([event], [machine], signals, probability_snapshots=True)
+    assert not result.predictive.missed_failure_ids
+    assert result.predictive.false_positive_count == 1
