@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -17,7 +18,7 @@ from threading import Lock
 from time import time
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from core.db import create_schema, session_scope
 from core.models import AuditLedger
@@ -116,6 +117,9 @@ def append_events(events: Iterable[AuditEvent], *, database_url: str | None = No
     with _AUDIT_LOCK:
         create_schema(database_url)
         with session_scope(database_url) as session:
+            # Serialize across processes and callers joining an existing write
+            # transaction, before reading the tail of the hash chain.
+            session.execute(text("BEGIN IMMEDIATE"))
             previous = session.scalars(select(AuditLedger.hash).order_by(AuditLedger.seq.desc())).first() or ZERO_HASH
             rows: list[AuditLedger] = []
             for event in values:
@@ -139,6 +143,21 @@ def append_events(events: Iterable[AuditEvent], *, database_url: str | None = No
                 previous = current_hash
             session.flush()
             return rows
+
+
+def append_in_transaction(connection: sqlite3.Connection, event: AuditEvent) -> None:
+    """Append to a caller's BEGIN IMMEDIATE transaction without committing it."""
+    if not connection.in_transaction:
+        raise RuntimeError("audit append requires an active write transaction")
+    previous_row = connection.execute("SELECT hash FROM audit_ledger ORDER BY seq DESC LIMIT 1").fetchone()
+    previous = str(previous_row[0]) if previous_row else ZERO_HASH
+    timestamp_ms = int(event.timestamp_ms if event.timestamp_ms is not None else time() * 1000)
+    payload = _event_payload(event.payload)
+    digest = entry_hash(prev_hash=previous, ts=timestamp_ms, actor=event.actor, action=event.action, subject=event.subject, payload=payload)
+    connection.execute(
+        "INSERT INTO audit_ledger (ts, actor, action, subject, payload_json, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (timestamp_ms, event.actor, event.action, event.subject, json.dumps(payload, sort_keys=True), previous, digest),
+    )
 
 
 def append_event(

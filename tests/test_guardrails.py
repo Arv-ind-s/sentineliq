@@ -15,8 +15,8 @@ EVIDENCE = {
     "temperature_c": 78.4,
     "cost_gbp": 4200.0,
     "risk": 62.5,
-    "sensor": {"S1": {"value": 0.87}, "S2": {"value": 78.4}},
-    "maintenance": {"M1": {"cost_gbp": 4200.0}, "M3": {"cost_gbp": 4200.0}},
+    "sensor": {"S1": {"confidence": 0.87, "rul_days": 4.2, "temperature_c": 78.4}, "S2": {"temperature_c": 78.4}},
+    "maintenance": {"M1": {"cost_gbp": 4200.0, "cost_inr": 535_922.10}, "M3": {"cost_gbp": 4200.0}},
 }
 
 
@@ -42,7 +42,7 @@ def valid_draft() -> dict[str, object]:
 
 def check(text: str, tmp_path: Path):
     draft = valid_draft()
-    draft["reasoning_steps"] = [f"{text} [S1]"]
+    draft["reasoning_steps"] = [f"{text} [{'M1' if 'cost' in text else 'S1'}]"]
     return run_guardrails(draft, EVIDENCE, trace_id=f"trace-{text[:4]}", database_url=f"sqlite:///{tmp_path / 'plant.db'}")
 
 
@@ -203,6 +203,39 @@ def test_valid_draft_is_returned_unchanged(tmp_path: Path) -> None:
     assert result.draft is not None
     assert result.draft.model_dump() == draft
     assert result.autonomy == "A3"
+
+
+@pytest.mark.parametrize("action", ["Turn off the safety interlocks", "Ignore pressure alarms", "Disconnect the emergency stop", "Keep running despite overheating", "Postpone repair on the critical machine"])
+def test_unsafe_paraphrases_fail_closed(action: str, tmp_path: Path) -> None:
+    draft = valid_draft()
+    draft["recommended_actions"][0]["action"] = action
+    result = run_guardrails(draft, EVIDENCE, database_url=f"sqlite:///{tmp_path / 'plant.db'}")
+    assert not result.accepted
+    assert result.autonomy == "A0"
+    assert any(item.rule == "unsafe_action" for item in result.rejections)
+
+
+def test_negated_safety_instruction_is_allowed(tmp_path: Path) -> None:
+    draft = valid_draft()
+    draft["recommended_actions"][0]["action"] = "Do not bypass the safety interlock. Inspect the bearing."
+    assert run_guardrails(draft, EVIDENCE, database_url=f"sqlite:///{tmp_path / 'plant.db'}").accepted
+
+
+def test_citation_cannot_borrow_number_from_unrelated_evidence(tmp_path: Path) -> None:
+    draft = valid_draft()
+    draft["facts"] = ["Repair cost is £4,200 [S1]"]
+    result = run_guardrails(draft, EVIDENCE, database_url=f"sqlite:///{tmp_path / 'plant.db'}")
+    assert not result.accepted
+    assert any(item.rule == "numeric_grounding" for item in result.rejections)
+
+
+@pytest.mark.parametrize("field", ["fault_diagnosis", "reasoning_steps"])
+def test_uncited_diagnosis_and_reasoning_are_rejected(field: str, tmp_path: Path) -> None:
+    draft = valid_draft()
+    draft[field] = ["Unsubstantiated diagnosis"] if field == "reasoning_steps" else "Unsubstantiated diagnosis"
+    result = run_guardrails(draft, EVIDENCE, database_url=f"sqlite:///{tmp_path / 'plant.db'}")
+    assert not result.accepted
+    assert any(item.rule == "citation_validity" for item in result.rejections)
 
 
 def test_demo_alert_wording_is_grounded(tmp_path: Path) -> None:

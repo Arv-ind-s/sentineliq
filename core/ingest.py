@@ -23,7 +23,7 @@ from typing import Any, AsyncIterator, Callable, Iterable, Mapping, Protocol
 import pyarrow.dataset as ds
 import pyarrow.compute as pc
 
-from core.config import ROOT, settings
+from core.config import settings
 from core.preprocess import CHANNELS
 from core.runtime_paths import runtime_paths
 
@@ -83,12 +83,9 @@ class AlertRecord:
 def database_path(database_url: str | None = None) -> Path:
     """Resolve the SQLite path used by the plant store."""
 
-    url = database_url or settings.db_url
-    if not url.startswith("sqlite:///"):
-        raise ValueError("ingest persistence currently requires a SQLite DB_URL")
-    value = url.removeprefix("sqlite:///")
-    path = Path(value)
-    return path if path.is_absolute() else ROOT / path
+    from core.db import sqlite_path
+
+    return sqlite_path(database_url)
 
 
 def _connect(database_url: str | None = None) -> sqlite3.Connection:
@@ -318,6 +315,9 @@ def process_batch(
         if was_inserted:
             accepted += 1
             inserted.append(point)
+        else:
+            # Replays must not advance alert state or publish duplicate events.
+            continue
         alert = generator.from_point(point)
         if alert:
             alert_ids.append(alert.id)

@@ -1,6 +1,6 @@
 # SentinelPdM evaluation report
 
-Generated: `2026-08-10T18:08:09.032594+00:00`
+Generated: `2026-09-09T19:49:04.842359+00:00`
 Model: `gemini-2.5-flash-lite`
 Run mode: **templated** (Gemini latency is not inferred from template runs)
 
@@ -18,15 +18,15 @@ Run mode: **templated** (Gemini latency is not inferred from template runs)
 | fault mode top1 | 0.985 | 0.700 | **PASS** |
 | rul interval coverage | 0.928 | [0.75, 0.95] | **PASS** |
 | reliability | 0 | 0 | **PASS** |
-| latency p95 | 1.405 | 6000 | **PASS** |
+| latency p95 | 1.479 | 6000 | **PASS** |
 | tokens per diagnosis | 0 | 3500 | **PASS** |
-| downtime reduction | 60.729 | 20.000 | **PASS** |
+| downtime reduction | -38.352 | 20.000 | **FAIL** |
 
 ## Downtime counterfactual
 
-Measured downtime reduction: **60.73%** (target ≥20%, PASS)
+Measured downtime reduction: **-38.35%** (target ≥20%, FAIL)
 reduction ≥ 0.20 ⟺ recall ≥ 0.278 + 0.39·(FP/N)
-Observed recall: 0.917; false positives: 11 / 60 events; inequality recall threshold: 0.350.
+Observed recall: 0.000; false positives: 30 / 22 events; inequality recall threshold: 0.810.
 
 ## Held-out prediction metrics
 
@@ -85,10 +85,10 @@ Latency fallback: `not activated (p95 within budget)`. The alert path remains de
 
 | Stage | p50 ms | p95 ms | Samples |
 |---|---:|---:|---:|
-| fusion | 0.019 | 0.035 | 20 |
-| coordinator | 0.115 | 0.199 | 20 |
-| guardrail | 0.753 | 1.170 | 20 |
-| total | 0.884 | 1.405 | 20 |
+| fusion | 0.018 | 0.030 | 20 |
+| coordinator | 0.111 | 0.171 | 20 |
+| guardrail | 0.829 | 1.274 | 20 |
+| total | 0.957 | 1.479 | 20 |
 
 Tokens/diagnosis p50/p95/max: **0 / 0 / 0**. Cost is not reported because the offline evaluation made no Gemini API call.
 

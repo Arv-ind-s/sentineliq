@@ -49,14 +49,25 @@ def test_explicit_migration_preserves_rows_and_is_idempotent(tmp_path) -> None:
     first = migrate(database_url, tmp_path / "backups")
     second = migrate(database_url, tmp_path / "backups")
 
-    assert first["schema_version"] == second["schema_version"] == 2
+    assert first["schema_version"] == second["schema_version"] == 3
     assert first["superseded_approvals"] == 1
     assert second["superseded_approvals"] == 0
     assert first["legacy_prediction_references_repaired"] == 1
     assert second["legacy_prediction_references_repaired"] == 0
     with sqlite3.connect(database_path) as connection:
-        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 2
+        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 3
         assert connection.execute("SELECT state FROM approvals ORDER BY id").fetchall() == [("superseded",), ("approved",)]
         assert connection.execute("SELECT source FROM predictions WHERE id = 'pred-pump-01-missing'").fetchone()[0] == "legacy_reference"
         assert connection.execute("SELECT prediction_id, citation_id FROM evidence").fetchone() == ("pred-old", "S1")
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_migration_normalizes_legacy_integrity_alert_without_losing_severity(tmp_path) -> None:
+    path = tmp_path / "plant.db"
+    _legacy_database(path)
+    with sqlite3.connect(path) as connection:
+        connection.execute("CREATE TABLE alerts (id TEXT PRIMARY KEY, kind TEXT, severity TEXT)")
+        connection.execute("INSERT INTO alerts VALUES ('integrity-1', 'data_integrity', 'critical')")
+    migrate(f"sqlite:///{path}")
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("SELECT * FROM alerts").fetchall() == [("integrity-1", "data", "CRITICAL")]

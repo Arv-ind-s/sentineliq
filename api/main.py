@@ -250,11 +250,9 @@ MODES = [
 ]
 MACHINE_IDS = ["PUMP-01", "PUMP-02", "PUMP-03", "PUMP-04", "PUMP-05", "PUMP-06", "PUMP-07", "PRESS-01", "PRESS-02", "PRESS-03", "CNC-09", "CNC-10", "CNC-11", "CONV-13", "CONV-14"]
 def _configured_sqlite_path() -> Path:
-    prefix = "sqlite:///"
-    if not settings.db_url.startswith(prefix) or ":memory:" in settings.db_url:
-        raise RuntimeError("Sentinel's plant repository currently requires a file-backed SQLite DB_URL")
-    raw = settings.db_url.removeprefix(prefix)
-    return Path(raw) if raw.startswith("/") else Path.cwd() / raw
+    from core.db import sqlite_path
+
+    return sqlite_path()
 
 
 ERP_ACTION_AGENT = ERPActionAgent(database_url=settings.db_url)
@@ -1479,8 +1477,9 @@ async def run(trace_id: str) -> RunResponse:
 
 def _alert_response(row: sqlite3.Row) -> Alert:
     machine_id = row["machine_id"]
-    kind = row["kind"]
-    severity = row["severity"] if row["severity"] in {"LOW", "MEDIUM", "HIGH", "CRITICAL", "NODATA"} else "MEDIUM"
+    kind = "data" if row["kind"] == "data_integrity" else row["kind"]
+    severity = str(row["severity"]).upper()
+    severity = severity if severity in {"LOW", "MEDIUM", "HIGH", "CRITICAL", "NODATA"} else "MEDIUM"
     title = f"{machine_id} data quality degraded" if kind == "data" else f"{machine_id} predicted fault risk elevated"
     message = "Telemetry quality is insufficient for a reliable mechanical prediction." if kind == "data" else "The signal crossed the configured prediction threshold; review the next planned window."
     return Alert(
@@ -1593,7 +1592,7 @@ def _erp_read(path: str, *, params: dict[str, Any] | None = None) -> Any:
     try:
         response = httpx.get(
             f"{settings.erp.base_url.rstrip('/')}/{path.lstrip('/')}",
-            headers={"Authorization": f"Bearer {settings.erp.api_key or 'dev-erp-key'}", "X-ERP-Scopes": "workorder:read"},
+            headers={"Authorization": f"Bearer {settings.erp.api_key or 'dev-erp-key'}"},
             params=params,
             timeout=settings.erp.timeout_s,
         )
@@ -1861,8 +1860,6 @@ def _role_can_decide(user: Principal, required_role: str) -> bool:
 
 
 def _require_pending_decision(row: sqlite3.Row, current_user: Principal, *, autonomy: str) -> None:
-    if row["state"] != "pending":
-        raise HTTPException(status_code=409, detail={"code": "approval_not_pending", "message": "This approval has already been decided"})
     if row["autonomy_level"] != autonomy:
         raise HTTPException(status_code=409, detail={"code": "approval_action_mismatch", "message": f"This action is not valid for {row['autonomy_level']}"})
     if not _role_can_decide(current_user, str(row["required_role"])):
@@ -1870,10 +1867,22 @@ def _require_pending_decision(row: sqlite3.Row, current_user: Principal, *, auto
 
 
 def _transition_approval(approval_id: str, state_value: str, actor: str, reason: str | None) -> sqlite3.Row:
+    from core.audit import AuditEvent, append_in_transaction
+    from agents.erp_action_agent import _PENDING_SCHEMA
+
     numeric_id = _numeric_approval_id(approval_id)
     decision_time = int(_utcnow().timestamp() * 1000)
     with _db_connection() as connection:
         connection.execute("BEGIN IMMEDIATE")
+        existing = connection.execute(f"{_APPROVAL_SELECT} WHERE a.id = ?", (numeric_id,)).fetchone()
+        if existing is None:
+            raise HTTPException(status_code=404, detail={"code": "approval_not_found", "message": f"Unknown approval: {approval_id}"})
+        if existing["state"] == state_value:
+            return existing
+        if state_value == "approved":
+            action_payload = _approval_payload(existing["action_payload"])
+            if action_payload is None or _canonical_payload_hash(action_payload) != existing["payload_hash"]:
+                raise HTTPException(status_code=409, detail={"code": "approval_payload_invalid", "message": "The reviewed payload is missing or invalid"})
         cursor = connection.execute(
             """UPDATE approvals SET state = ?, actor = ?, reason = ?, decided_at = ?
                WHERE id = ? AND state = 'pending'""",
@@ -1881,6 +1890,23 @@ def _transition_approval(approval_id: str, state_value: str, actor: str, reason:
         )
         if cursor.rowcount != 1:
             raise HTTPException(status_code=409, detail={"code": "approval_not_pending", "message": "This approval has already been decided"})
+        if state_value == "approved":
+            connection.execute(_PENDING_SCHEMA)
+            key = hashlib.sha256(f"approval-{numeric_id}:{existing['payload_hash']}".encode()).hexdigest()
+            erp_payload = ERPActionAgent._erp_payload(action_payload)
+            connection.execute(
+                """INSERT INTO pending_erp_sync
+                   (prediction_id, idempotency_key, payload_json, created_ts, updated_ts, next_attempt_ts)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (existing["prediction_id"], key, json.dumps(erp_payload, sort_keys=True), decision_time, decision_time, decision_time),
+            )
+            connection.execute("UPDATE approvals SET erp_sync_status = 'pending_sync' WHERE id = ?", (numeric_id,))
+        action = {"approved": "approval", "acknowledged": "acknowledgement", "rejected": "rejection"}[state_value]
+        append_in_transaction(connection, AuditEvent(
+            actor=actor, action=action, subject=f"approval-{numeric_id}", timestamp_ms=decision_time,
+            payload={"prediction_id": existing["prediction_id"], "reason": reason, "state": state_value,
+                     "payload_hash": existing["payload_hash"], "erp_write_requested": state_value == "approved"},
+        ))
         row = connection.execute(f"{_APPROVAL_SELECT} WHERE a.id = ?", (numeric_id,)).fetchone()
     if row is None:  # pragma: no cover - protected by the successful update
         raise HTTPException(status_code=404, detail={"code": "approval_not_found", "message": f"Unknown approval: {approval_id}"})
@@ -1890,8 +1916,8 @@ def _transition_approval(approval_id: str, state_value: str, actor: str, reason:
 def _set_erp_sync(approval_id: int, status_value: str, workorder_id: str | None = None) -> None:
     with _db_connection() as connection:
         connection.execute(
-            "UPDATE approvals SET erp_sync_status = ?, erp_workorder_id = COALESCE(?, erp_workorder_id) WHERE id = ?",
-            (status_value, workorder_id, approval_id),
+            "UPDATE approvals SET erp_sync_status = ?, erp_workorder_id = COALESCE(?, erp_workorder_id) WHERE id = ? AND (erp_sync_status != 'synced' OR ? = 'synced')",
+            (status_value, workorder_id, approval_id, status_value),
         )
 
 
@@ -1923,14 +1949,9 @@ async def approve(approval_id: str, payload: ApprovalDecision | None = None, cur
     row = _approval_database_row(approval_id)
     _require_pending_decision(row, current_user, autonomy="A0")
     reason = payload.reason if payload else None
+    if row["state"] == "approved":
+        return _approval_response(row)
     decided = _transition_approval(approval_id, "approved", current_user.username, reason)
-    append_event(
-        actor=current_user.username,
-        action="approval",
-        subject=approval_id,
-        payload={"prediction_id": decided["prediction_id"], "reason": reason, "state": "approved", "payload_hash": decided["payload_hash"], "erp_write_requested": True},
-        database_url=settings.db_url,
-    )
     _execute_approved_workorder(decided, current_user)
     return _approval_response(_approval_database_row(approval_id))
 
@@ -1943,13 +1964,6 @@ async def acknowledge(approval_id: str, payload: ApprovalDecision | None = None,
     _require_pending_decision(row, current_user, autonomy="A1")
     reason = payload.reason if payload else None
     decided = _transition_approval(approval_id, "acknowledged", current_user.username, reason)
-    append_event(
-        actor=current_user.username,
-        action="acknowledgement",
-        subject=approval_id,
-        payload={"prediction_id": decided["prediction_id"], "reason": reason, "state": "acknowledged", "erp_write_requested": False},
-        database_url=settings.db_url,
-    )
     return _approval_response(decided)
 
 
@@ -1961,13 +1975,6 @@ async def reject(approval_id: str, payload: RejectRequest, current_user: Princip
     _require_pending_decision(row, current_user, autonomy=str(row["autonomy_level"]))
     decided = _transition_approval(approval_id, "rejected", current_user.username, payload.reason)
     approval = _approval_response(decided)
-    append_event(
-        actor=current_user.username,
-        action="rejection",
-        subject=approval.id,
-        payload={"prediction_id": approval.prediction_id, "reason": payload.reason, "state": approval.state},
-        database_url=settings.db_url,
-    )
     return approval
 
 

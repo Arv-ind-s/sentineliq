@@ -12,6 +12,15 @@ async function loginAsPlanner(page: Page) {
 
 test("ERP workspace exposes history and idempotent approval-backed creation", async ({ page }) => {
   await loginAsPlanner(page);
+  await page.goto("/diagnosis/new-pump-07");
+  await expect(page.getByRole("heading", { name: "Risk explanation" })).toBeVisible({ timeout: 25_000 });
+  await page.goto("/schedule");
+  const card = page.locator(".approval-card").filter({ hasText: "planner" }).first();
+  await card.getByRole("button", { name: "Review evidence" }).click();
+  const approve = page.getByRole("button", { name: "Approve and create work order" });
+  await expect(approve).toBeEnabled({ timeout: 25_000 });
+  await approve.click();
+  await expect(page.getByText("Approved and synced to ERP.")).toBeVisible();
   await page.getByRole("link", { name: "ERP Work Orders" }).click();
   await page.waitForURL(/\/erp$/);
 
@@ -22,7 +31,7 @@ test("ERP workspace exposes history and idempotent approval-backed creation", as
   await expect(page.locator(".erp-parts-grid")).toContainText("LUB-05");
   await expect(page.locator("body")).not.toContainText(/[£€]/);
 
-  await page.getByRole("button", { name: "Create / sync work order" }).click();
-  await expect(page.getByRole("status")).toContainText(/Work order WO-/);
+  await page.getByRole("button", { name: "Retry stored work order" }).click();
+  await expect(page.locator(".erp-form-result")).toContainText(/Work order WO-/);
   await expect(page.getByText("No work orders are waiting to synchronize.")).toBeVisible();
 });

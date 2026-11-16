@@ -111,7 +111,9 @@ def test_insufficient_quality_refuses_prediction_and_alerts_maintenance_owner(tm
     assert predictor.calls == 0
     with session_scope(database_url) as session:
         assert session.query(Prediction).count() == 0
-        assert session.query(Alert).one().kind == "data_integrity"
+        alert = session.query(Alert).one()
+        assert alert.kind == "data"
+        assert alert.severity == "CRITICAL"
 
 
 def test_transient_sensor_read_failure_returns_sensor_unavailable_after_three_attempts(tmp_path: Path) -> None:

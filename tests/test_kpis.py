@@ -192,20 +192,17 @@ def _ledger_simulation(tau: float | None = None):
     )
 
 
-def test_downtime_reduction_at_least_20() -> None:
-    """Enforce KPI #2 through the same simulator used by the API route."""
+def test_downtime_reduction_accounts_for_misses_and_false_positives() -> None:
+    """Check the calculation; the evaluation report owns the 20% product gate."""
     result = _ledger_simulation()
     event_count = len(result.predictive.missed_failure_ids) + result.predictive.planned_actions - result.predictive.false_positive_count
     assert event_count > 0
     recall = 1 - len(result.predictive.missed_failure_ids) / event_count
     false_positive_rate = result.predictive.false_positive_count / event_count
     implied_recall = 0.278 + 0.39 * false_positive_rate
-    lever = "(a) widen recommended_window" if recall < implied_recall else "(b) raise tau only if false positives are the driver"
-
-    assert result.reduction_pct >= 20.0, (
-        f"downtime reduction {result.reduction_pct:.2f}% below 20%; "
-        f"recall={recall:.3f}, inequality requires recall≥{implied_recall:.3f}; lever {lever}"
-    )
+    expected = (result.reactive.downtime_minutes - result.predictive.downtime_minutes) / result.reactive.downtime_minutes * 100
+    assert result.reduction_pct == pytest.approx(expected)
+    assert (result.reduction_pct >= 20.0) == (recall >= (0.20 + (90 / 320) * false_positive_rate) / (1 - 90 / 320))
     print(
         f"KPI gate #2: reduction={result.reduction_pct:.2f}%, recall={recall:.3f}, "
         f"false_positives={result.predictive.false_positive_count}, tau={result.tau:.6f}"

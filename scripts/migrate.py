@@ -19,16 +19,12 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from core.audit import ZERO_HASH, entry_hash
-from core.config import ROOT, settings
-from core.db import CURRENT_SCHEMA_VERSION, dispose_engine
+from core.config import settings
+from core.db import CURRENT_SCHEMA_VERSION, dispose_engine, sqlite_path
 
 
 def _sqlite_path(database_url: str) -> Path:
-    prefix = "sqlite:///"
-    if not database_url.startswith(prefix) or ":memory:" in database_url:
-        raise ValueError("the explicit migration command currently supports file-backed SQLite databases only")
-    raw = database_url.removeprefix(prefix)
-    return Path(raw) if raw.startswith("/") else ROOT / raw
+    return sqlite_path(database_url)
 
 
 def _columns(connection: sqlite3.Connection, table: str) -> set[str]:
@@ -143,6 +139,18 @@ def _migrate_v2(connection: sqlite3.Connection) -> dict[str, int]:
         raise RuntimeError("database does not contain a Sentinel plant schema")
     now_ms = int(time.time() * 1000)
 
+    if "alerts" in tables:
+        connection.execute("UPDATE alerts SET kind = 'data' WHERE kind = 'data_integrity'")
+        connection.execute("UPDATE alerts SET severity = UPPER(severity)")
+    if "pending_erp_sync" in tables:
+        from agents.erp_action_agent import _PENDING_SCHEMA
+
+        # Distinct reviewed actions on the same prediction have distinct keys.
+        connection.execute("ALTER TABLE pending_erp_sync RENAME TO pending_erp_sync_legacy")
+        connection.execute(_PENDING_SCHEMA)
+        connection.execute("INSERT INTO pending_erp_sync SELECT * FROM pending_erp_sync_legacy")
+        connection.execute("DROP TABLE pending_erp_sync_legacy")
+
     if "agent_runs" in tables:
         _add_column(connection, "agent_runs", "created_at BIGINT")
         connection.execute("UPDATE agent_runs SET created_at = ? WHERE created_at IS NULL", (now_ms,))
@@ -236,6 +244,11 @@ def migrate(database_url: str, backup_dir: Path | None = None) -> dict[str, obje
     database_path = _sqlite_path(database_url).resolve()
     if not database_path.is_file():
         raise FileNotFoundError(database_path)
+    with sqlite3.connect(database_path) as probe:
+        if probe.execute("SELECT 1 FROM sqlite_master WHERE name='schema_version'").fetchone():
+            version = probe.execute("SELECT version FROM schema_version WHERE id=1").fetchone()
+            if version and int(version[0]) > CURRENT_SCHEMA_VERSION:
+                raise RuntimeError("database schema is newer than this application; migration would downgrade it")
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     target_dir = (backup_dir or database_path.parent / "backups").resolve()
     target_dir.mkdir(parents=True, exist_ok=True)

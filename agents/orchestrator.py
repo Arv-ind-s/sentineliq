@@ -667,7 +667,9 @@ class DiagnosisRun:
 
         if diagnosis.fallback_used:
             template_used = True
-        await self._emit(RunState.ROUTE, autonomy=decision.autonomy)
+        if any(_result_output(result).get("autonomy") == "A0" for result in guardrail_results) or not self._guardrail_accepted(guardrail_results[-1]):
+            fusion_result = {**fusion_result, "autonomy": "A0"}
+        await self._emit(RunState.ROUTE, autonomy=fusion_result["autonomy"])
         route_started = time.perf_counter()
         route = _route(fusion_result)
         route_context = RunContext(

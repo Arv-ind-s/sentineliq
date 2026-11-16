@@ -11,11 +11,22 @@ from typing import Iterator
 from sqlalchemy import Engine, create_engine, event, inspect
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.config import settings
+from core.config import ROOT, settings
 from core.models import Base
 
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
+
+
+def sqlite_path(database_url: str | None = None) -> Path:
+    """Resolve all plant SQLite clients relative to the project root."""
+    from sqlalchemy.engine import make_url
+
+    url = make_url(database_url or settings.db_url)
+    if url.drivername != "sqlite" or not url.database or url.database == ":memory:" or url.query:
+        raise ValueError("Sentinel requires a file-backed SQLite DB_URL without query parameters")
+    path = Path(url.database)
+    return (path if path.is_absolute() else ROOT / path).resolve()
 
 
 class SchemaUpgradeRequired(RuntimeError):
@@ -63,7 +74,7 @@ def get_engine(database_url: str | None = None) -> Engine:
     """
 
     global _engine, _database_url
-    url = database_url or settings.db_url
+    url = f"sqlite:///{sqlite_path(database_url)}"
     with _lock:
         if _engine is not None and _database_url == url:
             return _engine
@@ -102,7 +113,7 @@ def dispose_engine(database_url: str | None = None) -> None:
     """
 
     global _engine, _session_factory, _database_url
-    url = database_url or settings.db_url
+    url = f"sqlite:///{sqlite_path(database_url)}"
     with _lock:
         if _engine is None or _database_url != url:
             return

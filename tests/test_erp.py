@@ -23,6 +23,7 @@ def erp_client(monkeypatch: pytest.MonkeyPatch):
     test_dir.mkdir(parents=True)
     db_path = test_dir / "erp.db"
     monkeypatch.setenv("ERP_API_KEY", "test-erp-key")
+    monkeypatch.setenv("ERP_READ_API_KEY", "independent-read-key")
     monkeypatch.setenv("ERP_DB_PATH", str(db_path))
     monkeypatch.setenv("ERP_FAULT_MODE", "none")
     fault_injector._counter = 0
@@ -52,6 +53,16 @@ def test_bearer_auth_and_scopes(erp_client: TestClient) -> None:
     assert erp_client.get("/erp/v1/assets/PUMP-07", headers={"Authorization": "Bearer wrong"}).status_code == 401
     assert erp_client.get("/erp/v1/assets/PUMP-07", headers=auth("workorder:write")).status_code == 403
     assert erp_client.get("/erp/v1/assets/PUMP-07", headers=auth("workorder:read")).status_code == 200
+
+
+def test_scope_header_cannot_elevate_a_read_only_token(erp_client: TestClient) -> None:
+    response = erp_client.post("/erp/v1/workorders", headers={
+        "Authorization": "Bearer independent-read-key",
+        "X-ERP-Scopes": "workorder:write", "Idempotency-Key": "escalation",
+    }, json={"asset_id": "PUMP-07", "fault_code": "BRG-01", "description": "Unauthorized repair"})
+    assert response.status_code == 403
+    assert erp_client.get("/erp/v1/assets/PUMP-07", headers={"Authorization": "Bearer independent-read-key"}).status_code == 200
+    assert erp_client.get("/erp/v1/assets/PUMP-07", headers={"Authorization": "Bearer independent-read-key|workorder:write"}).status_code == 401
 
 
 def test_all_six_erp_endpoints_have_fixture_behaviour(erp_client: TestClient) -> None:
